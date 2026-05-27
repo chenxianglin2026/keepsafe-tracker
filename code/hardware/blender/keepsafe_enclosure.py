@@ -1,8 +1,11 @@
 """
-KeepSafe Enclosure - Blender Python Script
-Generates a 78x48x12mm rounded rectangle enclosure with all features.
+KeepSafe Enclosure - Blender Python Script v3.0
+Generates a 38x28x10mm rounded rectangle enclosure with all features.
 Run in Blender: Scripting workspace -> Open this file -> Run Script
 Or: blender --python keepsafe_enclosure.py
+
+v3.0 Changes: W=78→38, D=48→28, H=12→10, CORNER_R=8→4
+              SOS_D=22→12, EAR_W=10→20, internal components resized
 """
 
 import bpy
@@ -12,57 +15,53 @@ import math
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
 
-# ── Parameters ──
-W = 78.0       # total width (mm)
-D = 48.0       # total depth (mm)
-H = 12.0       # total height (mm)
-CORNER_R = 8.0 # corner radius
-WALL = 1.6     # wall thickness
-TOP_H = 5.0    # top shell height
-BOT_H = 7.0    # bottom shell height
+# ── Parameters (v3.0: 38×28×10mm) ──
+W = 38.0       # total width (mm), was 78
+D = 28.0       # total depth (mm), was 48
+H = 10.0       # total height (mm), was 12
+CORNER_R = 4.0 # corner radius, was 8
+WALL = 1.5     # wall thickness (was 1.6)
+TOP_H = 4.5    # top shell height
+BOT_H = 5.5    # bottom shell height
 
-# Ear (loop) - top-left corner
-EAR_W = 10.0
+# Ear (loop) - top-left corner, 20×14mm with 8mm hole
+EAR_W = 20.0     # was 10
 EAR_H = 14.0
 EAR_HOLE_D = 8.0
-EAR_OFFSET_X = -W/2 + CORNER_R / 2
-EAR_OFFSET_Y = D/2 + 2
+EAR_OFFSET_X = -W/2 + EAR_W/2
+EAR_OFFSET_Y = D/2 - EAR_H/2 + 2
 
-# SOS button
-SOS_D = 22.0
-SOS_FROM_BOTTOM = 8.0
+# SOS button - 12mm diameter (was 22)
+SOS_D = 12.0
+SOS_FROM_BOTTOM = 9.0   # 9mm from bottom edge (≥5mm per spec)
 
-# Speaker area
-SPK_W = 20.0
-SPK_H = 14.0
-SPK_Y = D/2 - 18
+# Buzzer speaker grille - middle of front face
+SPK_W = 8.8
+SPK_H = 4.4
+SPK_Y = 0    # centered
 
-# LEDs
-LED_D = 3.0
-LED_SPACING = 6.0
-LED_Y = SPK_Y - 10
+# LED indicator - top center, 2mm hole
+LED_D = 2.0        # was 3
+LED_Y = D/2 - 5    # 5mm from top
 
-# Type-C
-TYPEC_W = 8.5
-TYPEC_H = 2.8
-TYPEC_Y = 15.0
+# Type-C - right side, centered
+TYPEC_W = 9.0        # USB-C receptacle width
+TYPEC_H = 3.0        # USB-C receptacle height
 
-# Internal - battery 503040
-BAT_W = 30.0
-BAT_D = 50.0
-BAT_H = 4.0
-BAT_Y = -D/4
+# Internal - battery (28×18×4.5mm)
+BAT_W = 28.0    # was 30
+BAT_D = 18.0    # was 50 (was wrong orientation)
+BAT_H = 4.5     # was 4
 
-# Internal - PCB
-PCB_W = 30.0
-PCB_D = 35.0
+# Internal - PCBA (32×22×1.6mm)
+PCB_W = 32.0    # was 30
+PCB_D = 22.0    # was 35
 PCB_H = 1.6
-PCB_Y = D/6
 
-# Internal - motor
+# Internal - vibration motor (4×8×2mm)
 MOTOR_D = 8.0
-MOTOR_H = 3.0
-MOTOR_Y = -D/2 + 12
+MOTOR_H = 2.0
+MOTOR_Y = -D/2 + 8
 
 # Resolution
 SEGMENTS = 48
@@ -70,7 +69,7 @@ SEGMENTS = 48
 def clear_scene():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
-    
+
     # Remove all materials
     for mat in bpy.data.materials:
         mat.user_clear()
@@ -80,35 +79,35 @@ def make_rounded_rect_profile(w, d, r, seg=SEGMENTS):
     """Create a 2D rounded rectangle (list of (x,y) vertices)."""
     verts = []
     r = min(r, w/2, d/2)
-    
+
     # Top-right corner
     for i in range(seg // 4 + 1):
         angle = math.radians(90 * i / (seg // 4))
         x = w/2 - r + r * math.cos(angle)
         y = d/2 - r + r * math.sin(angle)
         verts.append((x, y))
-    
+
     # Top-left corner
     for i in range(seg // 4 + 1):
         angle = math.radians(90 + 90 * i / (seg // 4))
         x = -w/2 + r + r * math.cos(angle)
         y = d/2 - r + r * math.sin(angle)
         verts.append((x, y))
-    
+
     # Bottom-left corner
     for i in range(seg // 4 + 1):
         angle = math.radians(180 + 90 * i / (seg // 4))
         x = -w/2 + r + r * math.cos(angle)
         y = -d/2 + r + r * math.sin(angle)
         verts.append((x, y))
-    
+
     # Bottom-right corner
     for i in range(seg // 4 + 1):
         angle = math.radians(270 + 90 * i / (seg // 4))
         x = w/2 - r + r * math.cos(angle)
         y = -d/2 + r + r * math.sin(angle)
         verts.append((x, y))
-    
+
     return verts
 
 def create_mesh_from_profile(name, verts_2d, height, offset_z=0):
@@ -116,34 +115,34 @@ def create_mesh_from_profile(name, verts_2d, height, offset_z=0):
     n = len(verts_2d)
     vertices = []
     faces = []
-    
+
     # Bottom ring
     for x, y in verts_2d:
         vertices.append((x, y, -height/2 + offset_z))
     # Top ring
     for x, y in verts_2d:
         vertices.append((x, y, height/2 + offset_z))
-    
+
     # Side faces
     for i in range(n):
         next_i = (i + 1) % n
         faces.append([i, next_i, next_i + n, i + n])
-    
+
     # Bottom face
     faces.append(list(range(n)))
     # Top face
     faces.append(list(range(n, 2 * n)))
-    
+
     mesh = bpy.data.meshes.new(name)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
-    
+
     # Auto-smooth
     for poly in mesh.polygons:
         poly.use_smooth = True
-    
+
     return obj
 
 def add_cylinder(name, x, y, z, diameter, height, seg=32):
@@ -172,7 +171,6 @@ def add_cube(name, x, y, z, w, d, h):
 
 def slot_op(target_obj, tool_objs):
     """Boolean difference: cut tool_objs from target_obj."""
-   # Use a fresh copy for each cut
     current = target_obj
     for tool in tool_objs:
         bpy.context.view_layer.objects.active = current
@@ -194,7 +192,6 @@ profile = make_rounded_rect_profile(W - WALL*2, D - WALL*2, CORNER_R - WALL)
 top_outer = create_mesh_from_profile("Top_Outer", make_rounded_rect_profile(W, D, CORNER_R), TOP_H, BOT_H)
 
 # Top shell (inner cavity)
-# Cut inner from top shell
 top_inner = create_mesh_from_profile("Top_Inner", profile, TOP_H - WALL, BOT_H + WALL)
 
 # Subtract inner from outer
@@ -232,7 +229,7 @@ bpy.ops.mesh.primitive_cylinder_add(
 ear_outer = bpy.context.active_object
 ear_outer.name = "Ear"
 
-# Cut ear hole
+# Cut ear hole (8mm)
 bpy.ops.mesh.primitive_cylinder_add(
     vertices=SEGMENTS,
     radius=EAR_HOLE_D/2,
@@ -261,23 +258,23 @@ bpy.data.objects.remove(ear_outer, do_unlink=True)
 
 # ── Cut holes in top shell ──
 
-# SOS hole
+# SOS hole (12mm)
 sos = add_cylinder("SOS_Hole", 0, -D/2 + SOS_FROM_BOTTOM + SOS_D/2, BOT_H + TOP_H/2, SOS_D, TOP_H + 2)
 cut_tools = [sos]
 
-# Speaker holes
-for x in [-6, -3, 0, 3, 6]:
-    for y_off in [-3, 0, 3]:
-        spk = add_cylinder("Speaker_Hole", x, D/2 - 18 + y_off, BOT_H + TOP_H/2, 1.5, TOP_H + 2)
+# Buzzer speaker grille holes (matrix micro-holes)
+spk_spacing = 2.2
+for x in [-spk_spacing*2, -spk_spacing, 0, spk_spacing, spk_spacing*2]:
+    for y_off in [-spk_spacing, 0, spk_spacing]:
+        spk = add_cylinder("Speaker_Hole", x, y_off, BOT_H + TOP_H/2, 1.5, TOP_H + 2)
         cut_tools.append(spk)
 
-# LED holes
-for x_off in [-LED_SPACING/2, LED_SPACING/2]:
-    led = add_cylinder("LED_Hole", x_off, LED_Y, BOT_H + TOP_H/2, LED_D, TOP_H + 2)
-    cut_tools.append(led)
+# LED hole (2mm)
+led = add_cylinder("LED_Hole", 0, LED_Y, BOT_H + TOP_H/2, LED_D, TOP_H + 2)
+cut_tools.append(led)
 
-# Type-C hole
-typec = add_cube("TypeC_Hole", W/2, TYPEC_Y, BOT_H/2, WALL + 2, TYPEC_W, TYPEC_H + 1)
+# Type-C hole (right side, centered)
+typec = add_cube("TypeC_Hole", W/2, 0, BOT_H/2, WALL + 2, TYPEC_W, TYPEC_H + 1)
 cut_tools.append(typec)
 
 # Apply all cuts
@@ -292,9 +289,10 @@ for tool in cut_tools:
 
 # ── Add internal structures to bottom shell ──
 
-# Battery holder
-bat = add_cube("Battery_Holder", 0, BAT_Y, -BOT_H/2 + WALL, BAT_W + WALL*2, BAT_D + WALL*2, BAT_H + WALL)
-bat_inner = add_cube("Battery_Cavity", 0, BAT_Y, -BOT_H/2 + WALL + WALL/2, BAT_W, BAT_D, BAT_H + 0.1)
+# Battery holder (28×18×4.5mm)
+bat_y = -D/4    # lower half of device
+bat = add_cube("Battery_Holder", 0, bat_y, -BOT_H/2 + WALL, BAT_W + WALL*2, BAT_D + WALL*2, BAT_H + WALL)
+bat_inner = add_cube("Battery_Cavity", 0, bat_y, -BOT_H/2 + WALL + WALL/2, BAT_W, BAT_D, BAT_H + 0.1)
 
 bpy.context.view_layer.objects.active = bat
 bpy.ops.object.modifier_add(type='BOOLEAN')
@@ -313,9 +311,10 @@ mod.object = bat
 bpy.ops.object.modifier_apply(modifier=mod.name)
 bpy.data.objects.remove(bat, do_unlink=True)
 
-# PCB slot
-pcb = add_cube("PCB_Slot", 0, PCB_Y, -BOT_H/2 + WALL, PCB_W + WALL*2, PCB_D + WALL*2, PCB_H + WALL)
-pcb_inner = add_cube("PCB_Cavity", 0, PCB_Y, -BOT_H/2 + WALL + WALL/2, PCB_W, PCB_D, PCB_H + 0.1)
+# PCB slot (32×22×1.6mm)
+pcb_y = D/6    # upper area
+pcb = add_cube("PCB_Slot", 0, pcb_y, -BOT_H/2 + WALL, PCB_W + WALL*2, PCB_D + WALL*2, PCB_H + WALL)
+pcb_inner = add_cube("PCB_Cavity", 0, pcb_y, -BOT_H/2 + WALL + WALL/2, PCB_W, PCB_D, PCB_H + 0.1)
 
 bpy.context.view_layer.objects.active = pcb
 bpy.ops.object.modifier_add(type='BOOLEAN')
@@ -333,7 +332,7 @@ mod.object = pcb
 bpy.ops.object.modifier_apply(modifier=mod.name)
 bpy.data.objects.remove(pcb, do_unlink=True)
 
-# Motor holder
+# Motor holder (4×8×2mm)
 motor = add_cube("Motor_Holder", 0, MOTOR_Y, -BOT_H/2 + WALL, MOTOR_D + WALL*2, MOTOR_D + WALL*2, MOTOR_H + WALL)
 bpy.context.view_layer.objects.active = bot_shell
 bpy.ops.object.modifier_add(type='BOOLEAN')
@@ -373,13 +372,13 @@ else:
 
 # Camera
 bpy.ops.object.select_all(action='DESELECT')
-bpy.ops.object.camera_add(location=(120, -80, 60))
+bpy.ops.object.camera_add(location=(80, -60, 40))
 cam = bpy.context.active_object
 cam.rotation_euler = (math.radians(60), 0, math.radians(45))
 bpy.context.scene.camera = cam
 
 # Light
-bpy.ops.object.light_add(type='AREA', location=(100, -60, 80))
+bpy.ops.object.light_add(type='AREA', location=(60, -40, 50))
 light = bpy.context.active_object
 light.data.energy = 500
 
@@ -403,10 +402,11 @@ for area in bpy.context.screen.areas:
                 space.shading.type = 'MATERIAL'
 
 print("=" * 50)
-print("KeepSafe enclosure generated successfully!")
+print("KeepSafe enclosure v3.0 generated successfully!")
 print(f"Top shell: {W}x{D}x{TOP_H}mm, Bottom shell: {W}x{D}x{BOT_H}mm")
 print(f"Total height: {H}mm")
+print(f"Inner cavity: {W-2*WALL:.0f}x{D-2*WALL:.0f}x{H-2*WALL:.0f}mm")
 print("=" * 50)
 print("\nTo export STL:")
 print("  Select object -> File -> Export -> STL (.stl)")
-print("  Or use: bpy.ops.export_mesh.stl(filepath='keepsafe.stl')")
+print("  Or use: bpy.ops.export_mesh.stl(filepath='keepsafe_38x28x10.stl')")

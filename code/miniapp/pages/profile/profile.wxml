@@ -50,7 +50,7 @@
         <text class="setting-icon">🔔</text>
         <text class="setting-label">通知设置</text>
       </view>
-      <text class="setting-arrow">›</text>
+      <text class="setting-arrow">▶</text>
     </view>
 
     <view class="setting-item" bindtap="onMapSetting">
@@ -58,7 +58,7 @@
         <text class="setting-icon">🗺️</text>
         <text class="setting-label">地图设置</text>
       </view>
-      <text class="setting-arrow">›</text>
+      <text class="setting-arrow">▶</text>
     </view>
 
     <view class="setting-item" bindtap="onAbout">
@@ -67,7 +67,7 @@
         <text class="setting-label">关于 KeepSafe</text>
       </view>
       <text class="setting-value">v{{appVersion}}</text>
-      <text class="setting-arrow">›</text>
+      <text class="setting-arrow">▶</text>
     </view>
 
     <view class="setting-item" bindtap="onPrivacy">
@@ -75,7 +75,7 @@
         <text class="setting-icon">🔒</text>
         <text class="setting-label">隐私政策</text>
       </view>
-      <text class="setting-arrow">›</text>
+      <text class="setting-arrow">▶</text>
     </view>
   </view>
 

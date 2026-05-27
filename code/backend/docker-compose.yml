@@ -1,36 +1,41 @@
 # ============================================================
-# KeepSafe Backend — Docker Compose
+# KeepSafe Backend — Docker Compose (Production)
 # ============================================================
-# PostgreSQL 15 + Redis 7 + EMQX (MQTT Broker) + Backend API
+# TimescaleDB (PostgreSQL 15) + Redis 7 + EMQX 5 + Backend API
+#
+# Prerequisites:
+#   1. Copy .env.production to .env and fill in all values
+#   2. Place credentials/ under project root (FCM JSON, APNs key)
 #
 # Usage:
 #   docker compose up -d
 #   docker compose logs -f app
+#   docker compose ps
 # ============================================================
 
 services:
   # ──────────────────────────────────────────────
-  # PostgreSQL 15
+  # TimescaleDB (PostgreSQL 15 with time-series)
   # ──────────────────────────────────────────────
   postgres:
-    image: postgres:15-alpine
+    image: timescale/timescaledb:2.17.2-pg15
     container_name: keepsafe-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: keepsafe
-      POSTGRES_USER: keepsafe
-      POSTGRES_PASSWORD: "{{PLACEHOLDER_DB_PASSWORD}}"
+      POSTGRES_DB: ${POSTGRES_DB:-keepsafe}
+      POSTGRES_USER: ${POSTGRES_USER:-keepsafe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./dbschema/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keepsafe -d keepsafe"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-keepsafe} -d ${POSTGRES_DB:-keepsafe}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     networks:
       - keepsafe-net
 
@@ -45,12 +50,14 @@ services:
       - "6379:6379"
     command: >
       redis-server
-      --requirepass "{{PLACEHOLDER_REDIS_PASSWORD}}"
+      --requirepass "${REDIS_PASSWORD}"
       --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "-a", "{{PLACEHOLDER_REDIS_PASSWORD}}", "incr", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "-a", "${REDIS_PASSWORD}", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,7 +66,7 @@ services:
       - keepsafe-net
 
   # ──────────────────────────────────────────────
-  # EMQX (MQTT Broker)
+  # EMQX 5 (MQTT Broker)
   # ──────────────────────────────────────────────
   emqx:
     image: emqx/emqx:5.7.1
@@ -67,14 +74,11 @@ services:
     restart: unless-stopped
     ports:
       - "1883:1883"   # MQTT TCP
-      - "18083:18083" # Dashboard (Web UI)
+      - "18083:18083" # Dashboard Web UI
     environment:
-      # ── Node & Cluster ──
-      EMQX_NODE_NAME: emqx@keepsafe
-      EMQX_CLUSTER__DISCOVERY_STRATEGY: static
-
       # ── Dashboard ──
-      EMQX_DASHBOARD__DEFAULT_PASSWORD: "{{PLACEHOLDER_EMQX_DASHBOARD_PASSWORD}}"
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD}
 
       # ── Device Auth via Backend HTTP API ──
       EMQX_AUTHENTICATION__1__ENABLE: "true"
@@ -114,7 +118,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 25s
     depends_on:
       app:
         condition: service_started
@@ -128,18 +132,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: keepsafe-backend:latest
+    image: keepsafe-backend:${APP_VERSION:-latest}
     container_name: keepsafe-app
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     env_file:
       - .env
     environment:
       # Override host values for Docker networking
       DB_HOST: postgres
+      DB_PORT: "5432"
       REDIS_HOST: redis
+      REDIS_PORT: "6379"
       EMQX_HOST: emqx
+      EMQX_PORT: "1883"
     volumes:
       # Mount credentials for FCM/APNs (not baked into image)
       - ./credentials:/app/credentials:ro
@@ -152,7 +159,7 @@ services:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      start_period: 15s
+      start_period: 20s
       retries: 3
     networks:
       - keepsafe-net
