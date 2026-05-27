@@ -407,6 +407,34 @@ print(f"Top shell: {W}x{D}x{TOP_H}mm, Bottom shell: {W}x{D}x{BOT_H}mm")
 print(f"Total height: {H}mm")
 print(f"Inner cavity: {W-2*WALL:.0f}x{D-2*WALL:.0f}x{H-2*WALL:.0f}mm")
 print("=" * 50)
-print("\nTo export STL:")
-print("  Select object -> File -> Export -> STL (.stl)")
-print("  Or use: bpy.ops.export_mesh.stl(filepath='keepsafe_38x28x10.stl')")
+
+# Auto-export STL (manual binary STL writer - no addon needed)
+import os, struct
+out = os.path.expanduser("~/projects/keepsafe/code/hardware/keepsafe_body_v2.stl")
+
+# Collect all mesh triangles
+all_tris = []
+for obj in bpy.data.objects:
+    if obj.type != 'MESH':
+        continue
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    for tri in mesh.loop_triangles:
+        v = [mesh.vertices[tri.vertices[i]].co for i in range(3)]
+        # Transform to world space
+        m = obj.matrix_world
+        v = [m @ vv for vv in v]
+        # Compute normal
+        n = (v[1] - v[0]).cross(v[2] - v[0]).normalized()
+        all_tris.append((n, v[0], v[1], v[2]))
+
+with open(out, 'wb') as f:
+    f.write(b'\x00' * 80)  # header
+    f.write(struct.pack('<I', len(all_tris)))  # triangle count
+    for n, v0, v1, v2 in all_tris:
+        f.write(struct.pack('<3f', *n))
+        for v in [v0, v1, v2]:
+            f.write(struct.pack('<3f', v.x, v.y, v.z))
+        f.write(struct.pack('<H', 0))  # attribute
+
+print(f"STL exported: {out} ({len(all_tris)} triangles)")
