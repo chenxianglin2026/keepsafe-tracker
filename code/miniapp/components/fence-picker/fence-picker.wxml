@@ -1,0 +1,105 @@
+<!-- 围栏设置组件 -->
+<view class="fence-mask" wx:if="{{visible}}" catchtouchmove="preventMove">
+  <view class="fence-panel">
+    <!-- 标题栏 -->
+    <view class="fence-header">
+      <text class="fence-title">{{isEdit ? '编辑围栏' : '新建围栏'}}</text>
+      <text class="fence-close" bindtap="onClose">✕</text>
+    </view>
+
+    <!-- 围栏名称 -->
+    <view class="form-group">
+      <text class="form-label">围栏名称</text>
+      <input
+        class="input-field"
+        placeholder="例如：学校、家"
+        placeholder-class="input-placeholder"
+        value="{{fenceName}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+
+    <!-- 中心点位置 -->
+    <view class="form-group">
+      <text class="form-label">中心位置</text>
+      <view class="location-display">
+        <text class="location-text">
+          {{fenceLatitude ? fenceLatitude.toFixed(6) + ', ' + fenceLongitude.toFixed(6) : '请在地图上选择位置'}}
+        </text>
+        <view class="btn-pick-location" bindtap="onPickLocation">
+          <text>选择</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 围栏半径 -->
+    <view class="form-group">
+      <text class="form-label">围栏半径</text>
+      <view class="radius-selector">
+        <view
+          class="radius-option {{fenceRadius === 100 ? 'active' : ''}}"
+          data-radius="100"
+          bindtap="onRadiusSelect"
+        >
+          <text>100m</text>
+        </view>
+        <view
+          class="radius-option {{fenceRadius === 300 ? 'active' : ''}}"
+          data-radius="300"
+          bindtap="onRadiusSelect"
+        >
+          <text>300m</text>
+        </view>
+        <view
+          class="radius-option {{fenceRadius === 500 ? 'active' : ''}}"
+          data-radius="500"
+          bindtap="onRadiusSelect"
+        >
+          <text>500m</text>
+        </view>
+        <view
+          class="radius-option {{fenceRadius === 1000 ? 'active' : ''}}"
+          data-radius="1000"
+          bindtap="onRadiusSelect"
+        >
+          <text>1km</text>
+        </view>
+        <view
+          class="radius-option {{fenceRadius === 2000 ? 'active' : ''}}"
+          data-radius="2000"
+          bindtap="onRadiusSelect"
+        >
+          <text>2km</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 启用开关 -->
+    <view class="form-group row">
+      <text class="form-label">启用围栏</text>
+      <switch
+        class="fence-switch"
+        checked="{{fenceEnabled}}"
+        bindchange="onEnabledChange"
+        color="#4FACFE"
+      />
+    </view>
+
+    <!-- 提示信息 -->
+    <view class="fence-tip">
+      <text class="tip-icon">ℹ️</text>
+      <text class="tip-text">当设备离开围栏范围时，您将收到告警通知</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="fence-actions">
+      <view class="btn-delete" wx:if="{{isEdit}}" bindtap="onDelete">
+        <text>删除围栏</text>
+      </view>
+      <view class="btn-primary" bindtap="onSave">
+        <text>{{isEdit ? '保存修改' : '创建围栏'}}</text>
+      </view>
+    </view>
+  </view>
+</view>

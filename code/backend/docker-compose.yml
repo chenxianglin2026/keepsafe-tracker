@@ -1,0 +1,170 @@
+# ============================================================
+# KeepSafe Backend — Docker Compose
+# ============================================================
+# PostgreSQL 15 + Redis 7 + EMQX (MQTT Broker) + Backend API
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f app
+# ============================================================
+
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL 15
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: keepsafe-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: keepsafe
+      POSTGRES_USER: keepsafe
+      POSTGRES_PASSWORD: "{{PLACEHOLDER_DB_PASSWORD}}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keepsafe -d keepsafe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - keepsafe-net
+
+  # ──────────────────────────────────────────────
+  # Redis 7
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: keepsafe-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --requirepass "{{PLACEHOLDER_REDIS_PASSWORD}}"
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "-a", "{{PLACEHOLDER_REDIS_PASSWORD}}", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - keepsafe-net
+
+  # ──────────────────────────────────────────────
+  # EMQX (MQTT Broker)
+  # ──────────────────────────────────────────────
+  emqx:
+    image: emqx/emqx:5.7.1
+    container_name: keepsafe-emqx
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT TCP
+      - "18083:18083" # Dashboard (Web UI)
+    environment:
+      # ── Node & Cluster ──
+      EMQX_NODE_NAME: emqx@keepsafe
+      EMQX_CLUSTER__DISCOVERY_STRATEGY: static
+
+      # ── Dashboard ──
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: "{{PLACEHOLDER_EMQX_DASHBOARD_PASSWORD}}"
+
+      # ── Device Auth via Backend HTTP API ──
+      EMQX_AUTHENTICATION__1__ENABLE: "true"
+      EMQX_AUTHENTICATION__1__BACKEND: http
+      EMQX_AUTHENTICATION__1__METHOD: post
+      EMQX_AUTHENTICATION__1__URL: "http://app:8000/api/v1/auth/device"
+      EMQX_AUTHENTICATION__1__HEADERS__CONTENT_TYPE: application/json
+      EMQX_AUTHENTICATION__1__BODY__TEMPLATE: '{"device_id":"${username}","token":"${password}"}'
+      EMQX_AUTHENTICATION__1__HTTP_REQUEST_MODE: sync
+      EMQX_AUTHENTICATION__1__HTTP_SUCCESS_STATUS_CODES: "[200]"
+      EMQX_AUTHENTICATION__1__RESPONSE_RESULT__ALLOW: '"allow"'
+
+      # ── Device Authorization ACL via Backend HTTP API ──
+      EMQX_AUTHORIZATION__1__ENABLE: "true"
+      EMQX_AUTHORIZATION__1__BACKEND: http
+      EMQX_AUTHORIZATION__1__METHOD: get
+      EMQX_AUTHORIZATION__1__URL: >-
+        http://app:8000/api/v1/auth/device/acl?device_id=${username}&topic=${topic}&action=${action}
+      EMQX_AUTHORIZATION__1__HEADERS__CONTENT_TYPE: application/json
+      EMQX_AUTHORIZATION__1__HTTP_REQUEST_MODE: sync
+      EMQX_AUTHORIZATION__1__HTTP_SUCCESS_STATUS_CODES: "[200]"
+      EMQX_AUTHORIZATION__1__RESPONSE_RESULT__ALLOW: '"allow"'
+
+      # ── MQTT Protocol Settings ──
+      EMQX_MQTT__MAX_TOPIC_LEVELS: 8
+      EMQX_MQTT__MAX_PACKET_SIZE: 2MB
+      EMQX_LISTENERS__TCP__DEFAULT__MAX_CONNECTIONS: 100000
+      EMQX_MQTT__SESSION_EXPIRY_INTERVAL: 2h
+
+      # ── Logging ──
+      EMQX_LOG__CONSOLE__LEVEL: info
+    volumes:
+      - emqx-data:/opt/emqx/data
+      - emqx-log:/opt/emqx/log
+    healthcheck:
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - keepsafe-net
+
+  # ──────────────────────────────────────────────
+  # Backend API (FastAPI)
+  # ──────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: keepsafe-backend:latest
+    container_name: keepsafe-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override host values for Docker networking
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      EMQX_HOST: emqx
+    volumes:
+      # Mount credentials for FCM/APNs (not baked into image)
+      - ./credentials:/app/credentials:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      - keepsafe-net
+
+# ── Networks ──────────────────────────────────────
+networks:
+  keepsafe-net:
+    driver: bridge
+
+# ── Volumes ───────────────────────────────────────
+volumes:
+  postgres-data:
+  redis-data:
+  emqx-data:
+  emqx-log:

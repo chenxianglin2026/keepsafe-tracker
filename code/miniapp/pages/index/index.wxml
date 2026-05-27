@@ -1,0 +1,134 @@
+<!-- 首页 - 地图页面 -->
+<view class="page-index">
+
+  <!-- 腾讯地图组件 -->
+  <view class="map-container">
+    <map
+      id="keepSafeMap"
+      class="map"
+      latitude="{{mapCenter.latitude}}"
+      longitude="{{mapCenter.longitude}}"
+      scale="{{mapScale}}"
+      markers="{{markers}}"
+      circles="{{circles}}"
+      show-location="{{true}}"
+      enable-zoom="{{true}}"
+      enable-scroll="{{true}}"
+      bindmarkertap="onMarkerTap"
+      bindregionchange="onRegionChange"
+      bindtap="onMapTap"
+    />
+  </view>
+
+  <!-- 顶部状态栏 -->
+  <view class="status-bar">
+    <view class="status-item">
+      <text class="status-icon">📶</text>
+      <text class="status-label">设备</text>
+      <text class="status-value {{deviceCount > 0 ? 'active' : ''}}">{{deviceCount}}</text>
+    </view>
+    <view class="status-divider"></view>
+    <view class="status-item">
+      <text class="status-icon">🔔</text>
+      <text class="status-label">告警</text>
+      <text class="status-value alert {{unreadAlertCount > 0 ? 'has-alert' : ''}}">{{unreadAlertCount}}</text>
+    </view>
+    <view class="status-divider"></view>
+    <view class="status-item" bindtap="onRefresh">
+      <text class="status-icon">🔄</text>
+      <text class="status-label">刷新</text>
+      <text class="status-value time">{{lastRefreshTime}}</text>
+    </view>
+  </view>
+
+  <!-- 设备列表卡片 -->
+  <view class="device-list" wx:if="{{deviceList.length > 0}}">
+    <device-card
+      wx:for="{{deviceList}}"
+      wx:key="device_id"
+      device="{{item}}"
+      userLocation="{{userLocation}}"
+      bind:locate="onLocateDevice"
+      bind:fence="onFenceDevice"
+      bind:share="onShareDevice"
+      bind:tap="onDeviceTap"
+    />
+  </view>
+
+  <!-- 空状态 - 无设备 -->
+  <view class="empty-state" wx:if="{{!loading && deviceList.length === 0}}" catchtap="onBindDevice">
+    <view class="empty-icon">📱</view>
+    <text class="empty-title">还没有绑定设备</text>
+    <text class="empty-desc">点击下方按钮添加您的 KeepSafe 设备</text>
+    <view class="btn-primary empty-btn">
+      <text>+ 绑定设备</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-overlay" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">获取设备位置...</text>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="bottom-action" bindtap="onBindDevice">
+      <text class="action-icon">+</text>
+      <text class="action-text">绑定</text>
+    </view>
+    <view class="bottom-action center" bindtap="onCenterMap">
+      <text class="action-icon big">📍</text>
+      <text class="action-text">我的位置</text>
+    </view>
+    <view class="bottom-action" bindtap="onShowAlerts">
+      <text class="action-icon">🔔</text>
+      <text class="action-text">告警</text>
+    </view>
+  </view>
+
+  <!-- 围栏设置弹窗 -->
+  <fence-picker
+    visible="{{fenceVisible}}"
+    device-id="{{fenceDeviceId}}"
+    fence-data="{{fenceEditData}}"
+    bind:close="onFenceClose"
+    bind:saved="onFenceSaved"
+    bind:deleted="onFenceDeleted"
+  />
+
+  <!-- 绑定设备弹窗 -->
+  <view class="bind-mask" wx:if="{{bindVisible}}" catchtouchmove="preventMove">
+    <view class="bind-panel">
+      <view class="bind-header">
+        <text class="bind-title">绑定设备</text>
+        <text class="bind-close" bindtap="onBindClose">✕</text>
+      </view>
+      <view class="bind-body">
+        <text class="bind-desc">请输入设备背面的 6 位设备码</text>
+        <input
+          class="input-field bind-input"
+          placeholder="输入设备码"
+          placeholder-class="input-placeholder"
+          value="{{bindDeviceId}}"
+          bindinput="onBindInput"
+          maxlength="6"
+          focus="{{true}}"
+        />
+        <input
+          class="input-field bind-name-input"
+          placeholder="给设备取个名字（可选）"
+          placeholder-class="input-placeholder"
+          value="{{bindDeviceName}}"
+          bindinput="onBindNameInput"
+          maxlength="12"
+        />
+      </view>
+      <view class="bind-footer">
+        <view class="btn-primary" bindtap="onBindConfirm">
+          <text>确认绑定</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

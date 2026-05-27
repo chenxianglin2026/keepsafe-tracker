@@ -1,0 +1,122 @@
+<!-- 我的页面 - 设备管理 + 设置 -->
+<view class="page-profile">
+
+  <!-- 用户信息卡片 -->
+  <view class="user-card">
+    <view class="user-avatar">
+      <image
+        src="{{userInfo.avatarUrl || '../../images/default-avatar.png'}}"
+        class="avatar-img"
+        mode="aspectFill"
+      />
+    </view>
+    <view class="user-info">
+      <text class="user-name">{{userInfo.nickName || '用户'}}</text>
+      <text class="user-desc">KeepSafe 监护人</text>
+    </view>
+  </view>
+
+  <!-- 设备管理区 -->
+  <view class="section-header">
+    <text class="section-title">我的设备</text>
+    <text class="section-action" bindtap="onBindDevice">+ 添加设备</text>
+  </view>
+
+  <view class="device-section" wx:if="{{deviceList.length > 0}}">
+    <device-card
+      wx:for="{{deviceList}}"
+      wx:key="device_id"
+      device="{{item}}"
+      userLocation="{{userLocation}}"
+      bind:locate="onLocateDevice"
+      bind:fence="onFenceDevice"
+      bind:share="onShareDevice"
+    />
+  </view>
+
+  <view class="empty-devices" wx:if="{{deviceList.length === 0}}">
+    <view class="empty-icon">📱</view>
+    <text class="empty-text">还没有绑定设备</text>
+  </view>
+
+  <!-- 设置区 -->
+  <view class="section-header">
+    <text class="section-title">设置</text>
+  </view>
+
+  <view class="settings-section">
+    <view class="setting-item" bindtap="onNotificationSetting">
+      <view class="setting-left">
+        <text class="setting-icon">🔔</text>
+        <text class="setting-label">通知设置</text>
+      </view>
+      <text class="setting-arrow">›</text>
+    </view>
+
+    <view class="setting-item" bindtap="onMapSetting">
+      <view class="setting-left">
+        <text class="setting-icon">🗺️</text>
+        <text class="setting-label">地图设置</text>
+      </view>
+      <text class="setting-arrow">›</text>
+    </view>
+
+    <view class="setting-item" bindtap="onAbout">
+      <view class="setting-left">
+        <text class="setting-icon">ℹ️</text>
+        <text class="setting-label">关于 KeepSafe</text>
+      </view>
+      <text class="setting-value">v{{appVersion}}</text>
+      <text class="setting-arrow">›</text>
+    </view>
+
+    <view class="setting-item" bindtap="onPrivacy">
+      <view class="setting-left">
+        <text class="setting-icon">🔒</text>
+        <text class="setting-label">隐私政策</text>
+      </view>
+      <text class="setting-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-section">
+    <view class="btn-outline logout-btn" bindtap="onLogout">
+      <text>退出登录</text>
+    </view>
+  </view>
+
+  <!-- 绑定设备弹窗 -->
+  <view class="bind-mask" wx:if="{{bindVisible}}" catchtouchmove="preventMove">
+    <view class="bind-panel">
+      <view class="bind-header">
+        <text class="bind-title">绑定设备</text>
+        <text class="bind-close" bindtap="onBindClose">✕</text>
+      </view>
+      <view class="bind-body">
+        <text class="bind-desc">请输入设备背面的 6 位设备码</text>
+        <input
+          class="input-field bind-input"
+          placeholder="输入设备码"
+          placeholder-class="input-placeholder"
+          value="{{bindDeviceId}}"
+          bindinput="onBindInput"
+          maxlength="6"
+        />
+        <input
+          class="input-field bind-name-input"
+          placeholder="给设备取个名字（可选）"
+          placeholder-class="input-placeholder"
+          value="{{bindDeviceName}}"
+          bindinput="onBindNameInput"
+          maxlength="12"
+        />
+      </view>
+      <view class="bind-footer">
+        <view class="btn-primary" bindtap="onBindConfirm">
+          <text>确认绑定</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

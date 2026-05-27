@@ -1,0 +1,36 @@
+# 密钥和凭据
+*.p8
+*.pem
+*-service-account.json
+google-services.json
+GoogleService-Info.plist
+secrets/
+credentials/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# node_modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.xcworkspace
+xcuserdata/
+
+# 编译产物
+build/
+dist/
+*.pyc
+__pycache__/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.log
+*.tmp

@@ -1,0 +1,98 @@
+<!-- 登录页面 -->
+<view class="page-login">
+
+  <!-- Logo 区 -->
+  <view class="brand-section">
+    <view class="logo">🛡️</view>
+    <text class="brand-name">KeepSafe</text>
+    <text class="brand-slogan">守护家人，时刻安心</text>
+  </view>
+
+  <!-- 登录表单 -->
+  <view class="form-section" wx:if="{{mode === 'login'}}">
+    <view class="form-group">
+      <text class="form-label">邮箱</text>
+      <input
+        class="input-field"
+        type="text"
+        placeholder="请输入邮箱"
+        placeholder-class="input-placeholder"
+        value="{{email}}"
+        bindinput="onEmailInput"
+      />
+    </view>
+    <view class="form-group">
+      <text class="form-label">密码</text>
+      <input
+        class="input-field"
+        type="password"
+        placeholder="请输入密码"
+        placeholder-class="input-placeholder"
+        password="{{true}}"
+        value="{{password}}"
+        bindinput="onPasswordInput"
+      />
+    </view>
+    <view class="btn-primary login-btn" bindtap="onLogin">
+      <text wx:if="{{!logging}}">登 录</text>
+      <view class="loading-spinner small white" wx:if="{{logging}}"></view>
+    </view>
+    <view class="toggle-mode" bindtap="onSwitchMode">
+      <text>没有账号？<text class="link">立即注册</text></text>
+    </view>
+  </view>
+
+  <!-- 注册表单 -->
+  <view class="form-section" wx:if="{{mode === 'register'}}">
+    <view class="form-group">
+      <text class="form-label">昵称</text>
+      <input
+        class="input-field"
+        type="text"
+        placeholder="给自己取个名字"
+        placeholder-class="input-placeholder"
+        value="{{nickname}}"
+        bindinput="onNicknameInput"
+        maxlength="20"
+      />
+    </view>
+    <view class="form-group">
+      <text class="form-label">邮箱</text>
+      <input
+        class="input-field"
+        type="text"
+        placeholder="请输入邮箱"
+        placeholder-class="input-placeholder"
+        value="{{email}}"
+        bindinput="onEmailInput"
+      />
+    </view>
+    <view class="form-group">
+      <text class="form-label">密码</text>
+      <input
+        class="input-field"
+        type="password"
+        placeholder="至少6位密码"
+        placeholder-class="input-placeholder"
+        password="{{true}}"
+        value="{{password}}"
+        bindinput="onPasswordInput"
+      />
+    </view>
+    <view class="btn-primary login-btn" bindtap="onRegister">
+      <text wx:if="{{!registering}}">注 册</text>
+      <view class="loading-spinner small white" wx:if="{{registering}}"></view>
+    </view>
+    <view class="toggle-mode" bindtap="onSwitchMode">
+      <text>已有账号？<text class="link">立即登录</text></text>
+    </view>
+  </view>
+
+  <!-- 隐私提示 -->
+  <view class="privacy-tip">
+    <text>登录即表示同意</text>
+    <text class="link" bindtap="onPrivacy">《隐私政策》</text>
+    <text>和</text>
+    <text class="link" bindtap="onTerms">《服务条款》</text>
+  </view>
+</view>

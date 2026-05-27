@@ -1,0 +1,129 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fff;
+  font-size: 14px;
+  color: #666;
+}
+
+.map-area {
+  flex: 1;
+  min-height: 300px;
+}
+
+.location-label {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  background: rgba(255,255,255,0.95);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.action-bar {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 48px;
+  text-align: center;
+}
+
+.btn-primary {
+  background: #4CD964;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #007AFF;
+  color: #fff;
+}
+
+.device-list {
+  padding: 12px 16px;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.device-card {
+  display: flex;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.device-icon {
+  font-size: 28px;
+  margin-right: 12px;
+}
+
+.device-info {
+  flex: 1;
+}
+
+.device-name {
+  font-size: 18px;
+  font-weight: 500;
+  display: block;
+}
+
+.device-status {
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.online { color: #4CD964; }
+.offline { color: #FF3B30; }
+
+.device-arrow {
+  font-size: 24px;
+  color: #ccc;
+}
+
+.add-device {
+  border-bottom: none;
+}
+
+.tab-bar {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.tab-item.active {
+  color: #4CD964;
+}
+
+.tab-item text:first-child {
+  font-size: 22px;
+  margin-bottom: 2px;
+}

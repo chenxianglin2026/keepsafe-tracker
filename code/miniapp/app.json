@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/alerts/alert",
+    "pages/sos-detail/sos-detail",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1A1A2E",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "KeepSafe",
+    "backgroundColor": "#0F0F23",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#6C6C80",
+    "selectedColor": "#4FACFE",
+    "backgroundColor": "#1A1A2E",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "地图",
+        "iconPath": "images/tab-map.png",
+        "selectedIconPath": "images/tab-map-active.png"
+      },
+      {
+        "pagePath": "pages/alerts/alert",
+        "text": "告警",
+        "iconPath": "images/tab-alert.png",
+        "selectedIconPath": "images/tab-alert-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab-profile.png",
+        "selectedIconPath": "images/tab-profile-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "KeepSafe 需要获取您的位置以显示设备位置"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation",
+    "startLocationUpdateBackground"
+  ],
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

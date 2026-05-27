@@ -1,0 +1,214 @@
+/** 我的页面样式 */
+
+.page-profile {
+  min-height: 100vh;
+  padding-bottom: 40rpx;
+}
+
+/* 用户卡片 */
+.user-card {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 24rpx;
+  background: var(--bg-card);
+  margin: 16rpx 24rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.user-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 4rpx solid rgba(79, 172, 254, 0.3);
+  margin-right: 24rpx;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.user-desc {
+  font-size: 24rpx;
+  color: var(--text-muted);
+}
+
+/* 区块标题 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 32rpx 16rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2rpx;
+}
+
+.section-action {
+  font-size: 26rpx;
+  color: var(--primary);
+}
+
+.section-action:active {
+  opacity: 0.7;
+}
+
+/* 空设备 */
+.empty-devices {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 26rpx;
+}
+
+/* 设置项 */
+.settings-section {
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  margin: 8rpx 24rpx;
+  border: 1rpx solid var(--border-color);
+  overflow: hidden;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
+  border-bottom: 1rpx solid rgba(42, 42, 74, 0.5);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.setting-icon {
+  font-size: 32rpx;
+  width: 40rpx;
+  text-align: center;
+}
+
+.setting-label {
+  font-size: 28rpx;
+  color: var(--text-primary);
+}
+
+.setting-value {
+  font-size: 24rpx;
+  color: var(--text-muted);
+  margin-right: 8rpx;
+}
+
+.setting-arrow {
+  font-size: 32rpx;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+/* 退出登录 */
+.logout-section {
+  padding: 48rpx 80rpx;
+}
+
+.logout-btn {
+  border-color: rgba(255, 71, 87, 0.3);
+  color: var(--danger);
+}
+
+/* 绑定设备弹窗（与首页保持一致） */
+.bind-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bind-panel {
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + var(--safe-bottom));
+}
+
+.bind-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.bind-title {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.bind-close {
+  font-size: 36rpx;
+  color: var(--text-muted);
+  padding: 8rpx;
+}
+
+.bind-desc {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-bottom: 24rpx;
+  display: block;
+}
+
+.bind-input {
+  font-size: 40rpx;
+  letter-spacing: 12rpx;
+  text-align: center;
+  font-weight: 600;
+}
+
+.bind-name-input {
+  margin-top: 16rpx;
+}
+
+.bind-footer {
+  margin-top: 32rpx;
+}

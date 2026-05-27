@@ -1,0 +1,67 @@
+<!-- SOS 告警详情页 -->
+<view class="page-sos">
+
+  <!-- 地图区域 -->
+  <view class="map-wrap">
+    <map
+      id="sosMap"
+      class="map"
+      latitude="{{latitude}}"
+      longitude="{{longitude}}"
+      scale="16"
+      markers="{{markers}}"
+      show-location="{{true}}"
+      enable-zoom="{{true}}"
+      enable-scroll="{{true}}"
+    />
+  </view>
+
+  <!-- SOS 紧急横幅 -->
+  <view class="sos-banner">
+    <view class="sos-badge">🆘 SOS 求助</view>
+    <text class="sos-time">{{timeText}}</text>
+  </view>
+
+  <!-- 设备信息卡片 -->
+  <view class="info-card">
+    <view class="info-row">
+      <text class="info-label">设备名称</text>
+      <text class="info-value">{{deviceName}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">设备 ID</text>
+      <text class="info-value">{{deviceId}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">位置</text>
+      <text class="info-value">{{address || '获取位置中...'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">电量</text>
+      <view class="battery-row">
+        <view class="battery-bar small">
+          <view class="battery-fill" style="width: {{battery}}%; background: {{batteryColor}};"></view>
+        </view>
+        <text class="info-value">{{battery}}%</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-section">
+    <view class="btn-primary call-btn" bindtap="onCallDevice">
+      <text>📞 联系设备使用者</text>
+    </view>
+    <view class="btn-outline nav-btn" bindtap="onNavigate">
+      <text>🗺️ 导航前往</text>
+    </view>
+    <view class="btn-outline ack-btn" bindtap="onAcknowledge">
+      <text>✓ 确认收到</text>
+    </view>
+  </view>
+
+  <!-- 提示 -->
+  <view class="sos-tip">
+    <text>🕐 请尽快联系使用者确认安全。如情况紧急，建议直接报警。</text>
+  </view>
+</view>

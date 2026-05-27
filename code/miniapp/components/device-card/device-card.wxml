@@ -1,0 +1,43 @@
+<!-- 设备状态卡片组件 -->
+<view class="device-card" bindtap="onTap">
+  <view class="device-header">
+    <view class="device-info">
+      <text class="device-name">{{device.name || '未命名设备'}}</text>
+      <view class="device-id-row">
+        <text class="device-id-label">设备ID: </text>
+        <text class="device-id">{{device.device_id || '--'}}</text>
+      </view>
+    </view>
+    <view class="device-status {{statusClass}}">{{statusText}}</view>
+  </view>
+
+  <view class="device-body">
+    <view class="info-row">
+      <text class="info-label">电量</text>
+      <view class="battery-bar">
+        <view class="battery-fill" style="width: {{batteryPercent}}%; background: {{batteryColor}};"></view>
+      </view>
+      <text class="info-value">{{device.battery != null ? device.battery + '%' : '--'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">最后上报</text>
+      <text class="info-value">{{lastTime}}</text>
+    </view>
+    <view class="info-row" wx:if="{{distance != null}}">
+      <text class="info-label">距您</text>
+      <text class="info-value highlight">{{distance}}</text>
+    </view>
+  </view>
+
+  <view class="device-footer">
+    <view class="action-btn locate-btn" bindtap="onLocate" data-stop-propagation="true">
+      <text>📍 定位</text>
+    </view>
+    <view class="action-btn fence-btn" bindtap="onFence" data-stop-propagation="true">
+      <text>⭕ 围栏</text>
+    </view>
+    <view class="action-btn share-btn" bindtap="onShare" data-stop-propagation="true">
+      <text>🔗 分享</text>
+    </view>
+  </view>
+</view>

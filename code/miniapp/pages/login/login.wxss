@@ -1,0 +1,115 @@
+/** 登录/注册页面样式 */
+
+.page-login {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 48rpx 40rpx;
+}
+
+/* Logo 区 */
+.brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 64rpx;
+}
+
+.logo {
+  font-size: 100rpx;
+  margin-bottom: 20rpx;
+}
+
+.brand-name {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 12rpx;
+  letter-spacing: 4rpx;
+}
+
+.brand-slogan {
+  font-size: 26rpx;
+  color: var(--text-muted);
+  letter-spacing: 6rpx;
+}
+
+/* 表单区 */
+.form-section {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.input-field {
+  height: 96rpx;
+  background: var(--bg-surface);
+  border-radius: 16rpx;
+  padding: 0 28rpx;
+  color: var(--text-primary);
+  font-size: 30rpx;
+  border: 2rpx solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-placeholder {
+  color: var(--text-muted);
+  font-size: 28rpx;
+}
+
+.login-btn {
+  height: 96rpx;
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  border-radius: 48rpx;
+}
+
+.toggle-mode {
+  text-align: center;
+  margin-top: 32rpx;
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+.link {
+  color: var(--primary);
+}
+
+/* 隐私提示 */
+.privacy-tip {
+  position: fixed;
+  bottom: 60rpx;
+  left: 48rpx;
+  right: 48rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.privacy-tip text {
+  vertical-align: middle;
+}
+
+/* 小号白色加载器 */
+.loading-spinner.small {
+  width: 36rpx;
+  height: 36rpx;
+  border-width: 3rpx;
+}
+
+.loading-spinner.white {
+  border-color: rgba(255,255,255,0.3);
+  border-top-color: white;
+}

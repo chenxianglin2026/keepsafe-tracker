@@ -1,0 +1,211 @@
+/** 围栏设置组件样式 */
+
+.fence-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fence-panel {
+  width: 100%;
+  max-height: 80vh;
+  background: var(--bg-card);
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + var(--safe-bottom));
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.fence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 36rpx;
+}
+
+.fence-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fence-close {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: var(--text-muted);
+  border-radius: 50%;
+}
+
+.fence-close:active {
+  background: var(--bg-surface);
+}
+
+/* 表单组 */
+.form-group {
+  margin-bottom: 32rpx;
+}
+
+.form-group.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.form-group.row .form-label {
+  margin-bottom: 0;
+}
+
+.input-field {
+  height: 80rpx;
+  background: var(--bg-surface);
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  color: var(--text-primary);
+  font-size: 28rpx;
+  border: 2rpx solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-placeholder {
+  color: var(--text-muted);
+}
+
+/* 位置显示 */
+.location-display {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid var(--border-color);
+}
+
+.location-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  font-family: 'Courier New', monospace;
+}
+
+.btn-pick-location {
+  padding: 8rpx 24rpx;
+  border-radius: 12rpx;
+  background: var(--primary);
+  color: white;
+  font-size: 24rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.btn-pick-location:active {
+  opacity: 0.8;
+}
+
+/* 半径选择 */
+.radius-selector {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.radius-option {
+  padding: 16rpx 28rpx;
+  border-radius: 16rpx;
+  background: var(--bg-surface);
+  border: 2rpx solid var(--border-color);
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  flex: 1;
+  text-align: center;
+  min-width: 100rpx;
+}
+
+.radius-option.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(79, 172, 254, 0.1);
+}
+
+.radius-option:active {
+  opacity: 0.7;
+}
+
+/* 开关 */
+.fence-switch {
+  transform: scale(0.8);
+}
+
+/* 提示 */
+.fence-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx;
+  background: rgba(79, 172, 254, 0.08);
+  border-radius: 16rpx;
+  margin-bottom: 32rpx;
+}
+
+.tip-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* 操作按钮 */
+.fence-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.btn-delete {
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 40rpx;
+  background: transparent;
+  color: var(--danger);
+  font-size: 28rpx;
+  border: 2rpx solid rgba(255, 71, 87, 0.3);
+}
+
+.btn-delete:active {
+  background: rgba(255, 71, 87, 0.08);
+}

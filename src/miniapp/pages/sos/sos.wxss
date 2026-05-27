@@ -1,0 +1,104 @@
+.sos-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: #FFF5F5;
+  min-height: 100vh;
+}
+
+.sos-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #FF3B30;
+  color: #fff;
+  width: 100%;
+  padding: 30px 20px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.4); }
+  50% { box-shadow: 0 0 0 20px rgba(255,59,48,0); }
+}
+
+.sos-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.sos-title {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.sos-time {
+  font-size: 16px;
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.location-card {
+  width: 100%;
+  background: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.loc-label {
+  font-size: 14px;
+  color: #666;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.loc-address {
+  font-size: 20px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.loc-detail {
+  font-size: 14px;
+  color: #999;
+}
+
+.sos-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.action-btn {
+  height: 56px;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 56px;
+}
+
+.navigate-btn {
+  background: #4CD964;
+}
+
+.call-btn {
+  background: #007AFF;
+}
+
+.safe-btn {
+  height: 48px;
+  border-radius: 12px;
+  font-size: 16px;
+  background: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+  width: 100%;
+}
