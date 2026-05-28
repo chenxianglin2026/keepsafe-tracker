@@ -1,0 +1,52 @@
+# KeepSafe Project - General .gitignore
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.p8
+*.key
+*.p12
+*.pfx
+credentials/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+.venv/
+*.so
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+
+# Build / Firmware
+build/
+sdkconfig
+*.bin
+
+# Logs
+*.log
+
+# Upload directories
+uploads/
+
+# Docker
+*.dockerignore

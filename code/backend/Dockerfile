@@ -1,15 +1,3 @@
-=====================================
-HiClaw Installation Log
-Started: 2026年 5月27日 星期三 11时55分13秒 CST
-User: chenxianglin
-System: Darwin chenxianglindeMacBook-Pro-2.local 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:41:12 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6050 arm64
-Log file: /Users/chenxianglin/hiclaw-install.log
-========================================
-
-[HiClaw ERROR] 未找到 docker 或 podman 命令。请先安装 Docker Desktop 或 Podman Desktop：
-  Docker Desktop: https://www.docker.com/products/docker-desktop/
-  Podman Desktop: https://podman-desktop.io/
-chenxianglin@chenxianglindeMacBook-Pro-2 ~ % 
 # ============================================================
 # KeepSafe Backend — Dockerfile (Multi-stage build)
 # ============================================================

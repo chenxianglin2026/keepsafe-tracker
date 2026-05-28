@@ -91,9 +91,18 @@ app = FastAPI(
 )
 
 # CORS — allow mobile app and web dashboard
+# In dev_mode, allow all origins. In production, restrict to CORS_ORIGINS env var.
+if settings.dev_mode:
+    allow_origins = ["*"]
+else:
+    cors_origins_str = settings.cors_origins.strip()
+    allow_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()] if cors_origins_str else []
+    if not allow_origins:
+        logger.warning("CORS_ORIGINS is empty in production mode; no cross-origin requests will be allowed")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -138,7 +147,10 @@ import traceback
 async def global_500_handler(request, exc):
     tb = traceback.format_exc()
     logger.error("Unhandled 500 error:\n%s", tb)
-    return JR(status_code=500, content={"detail": str(exc)[:200], "trace": tb.split("\n")[-5:]})
+    # Do NOT leak traceback to clients in production
+    if settings.dev_mode:
+        return JR(status_code=500, content={"detail": str(exc)[:200], "trace": tb.split("\n")[-5:]})
+    return JR(status_code=500, content={"detail": "Internal server error"})
 
 # 静态文件服务 — 上传目录
 import os

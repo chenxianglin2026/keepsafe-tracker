@@ -14,3 +14,7 @@ alembic==1.13.2
 h2==4.1.0
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.5.0
+python-multipart==0.0.9
+fakeredis==2.21.3
+aiosqlite==0.20.0
+aiofiles==24.1.0

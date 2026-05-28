@@ -85,9 +85,12 @@ class Settings(BaseSettings):
     lbs_source: str = "opencellid"    # "opencellid" | "baidu"
 
     # ── Dev Mode ──
-    dev_mode: bool = True
+    dev_mode: bool = False
     # When True: uses SQLite + fakeredis for local development
     # When False: uses PostgreSQL + Redis (production)
+
+    # ── CORS ──
+    cors_origins: str = ""    # comma-separated list, e.g. "https://app.keepsafe.com,https://dashboard.keepsafe.com"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import and_, delete, desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.users import get_current_user, User
 from app.db import get_db, Device, Location, SosEvent, Alert, UserDevice, Fence
 from app.redis_cache import get_device_status, get_latest_location
 
@@ -84,17 +85,44 @@ class BindResponse(BaseModel):
     message: str
 
 
+# ── Auth Helper ────────────────────────────────────────────────
+
+async def _verify_device_ownership(
+    device_id: str,
+    current_user: User,
+    db: AsyncSession,
+) -> None:
+    """Verify the current user is bound to this device. Raises 403 if not."""
+    stmt = select(UserDevice).where(
+        and_(
+            UserDevice.user_id == current_user.user_id,
+            UserDevice.device_id == device_id,
+            UserDevice.is_bound == True,
+        )
+    )
+    result = await db.execute(stmt)
+    binding = result.scalar_one_or_none()
+    if binding is None:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this device",
+        )
+
+
 # ── Endpoints ────────────────────────────────────────────────
 
 @router.get("/{device_id}/location", response_model=Optional[LocationOut])
 async def get_device_location(
     device_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get the latest location for a device.
     Reads from Redis cache first, falls back to TimescaleDB.
     """
+    await _verify_device_ownership(device_id, current_user, db)
+
     # Try Redis first (fast path)
     cached = await get_latest_location(device_id)
     if cached:
@@ -120,12 +148,15 @@ async def get_device_location(
 @router.get("/{device_id}/status", response_model=DeviceStatusOut)
 async def get_device_status_endpoint(
     device_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get device online status, battery level, RSSI, and last known position.
     Reads from Redis cache first.
     """
+    await _verify_device_ownership(device_id, current_user, db)
+
     # Try Redis
     cached = await get_device_status(device_id)
     if cached:
@@ -189,11 +220,14 @@ async def get_device_history(
     from_: Optional[datetime] = Query(None, alias="from"),
     to: Optional[datetime] = Query(None),
     limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get location history (trajectory) for a device within a time range.
     """
+    await _verify_device_ownership(device_id, current_user, db)
+
     if not from_:
         from_ = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     if not to:
@@ -222,11 +256,14 @@ async def get_device_history(
 async def get_sos_events(
     device_id: str,
     limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get SOS event history for a device.
     """
+    await _verify_device_ownership(device_id, current_user, db)
+
     stmt = (
         select(SosEvent)
         .where(SosEvent.device_id == device_id)
@@ -243,6 +280,7 @@ async def get_sos_events(
 @router.post("/bind", response_model=BindResponse)
 async def bind_device(
     req: BindRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -250,6 +288,13 @@ async def bind_device(
 
     Validates the device token before binding.
     """
+    # Verify req.user_id matches the authenticated user
+    if req.user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot bind device to a different user account",
+        )
+
     # Verify device exists and token matches
     stmt = select(Device).where(Device.device_id == req.device_id)
     result = await db.execute(stmt)
@@ -304,15 +349,17 @@ async def bind_device(
 @router.delete("/{device_id}/bind", response_model=BindResponse)
 async def unbind_device(
     device_id: str,
-    user_id: str = Query(..., description="User ID to unbind from"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Unbind a device from a user account.
+    Unbind a device from the authenticated user's account.
     """
+    await _verify_device_ownership(device_id, current_user, db)
+
     stmt = select(UserDevice).where(
         and_(
-            UserDevice.user_id == user_id,
+            UserDevice.user_id == current_user.user_id,
             UserDevice.device_id == device_id,
         )
     )
@@ -325,5 +372,5 @@ async def unbind_device(
     binding.is_bound = False
     await db.commit()
 
-    logger.info("Device %s unbound from user %s", device_id, user_id)
+    logger.info("Device %s unbound from user %s", device_id, current_user.user_id)
     return BindResponse(success=True, message="Device unbound successfully")

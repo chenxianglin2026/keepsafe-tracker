@@ -16,7 +16,8 @@ from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_db, Device, Fence
+from app.api.users import get_current_user, User
+from app.db import get_db, Device, Fence, UserDevice
 
 logger = logging.getLogger("keepsafe.api.fences")
 
@@ -92,17 +93,41 @@ async def _get_fence_or_404(
     return fence
 
 
+async def _verify_device_ownership(
+    device_id: str,
+    current_user: User,
+    db: AsyncSession,
+) -> None:
+    """Verify the current user is bound to this device. Raises 403 if not."""
+    stmt = select(UserDevice).where(
+        and_(
+            UserDevice.user_id == current_user.user_id,
+            UserDevice.device_id == device_id,
+            UserDevice.is_bound == True,
+        )
+    )
+    result = await db.execute(stmt)
+    binding = result.scalar_one_or_none()
+    if binding is None:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this device",
+        )
+
+
 # ── Endpoints ──────────────────────────────────────────────────
 
 @router.get("", response_model=FenceListOut)
 async def list_fences(
     device_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     List all geofences for a device.
     """
     await _ensure_device_exists(device_id, db)
+    await _verify_device_ownership(device_id, current_user, db)
 
     stmt = (
         select(Fence)
@@ -122,12 +147,14 @@ async def list_fences(
 async def create_fence(
     device_id: str,
     req: FenceCreateRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new geofence for a device.
     """
     await _ensure_device_exists(device_id, db)
+    await _verify_device_ownership(device_id, current_user, db)
 
     fence = Fence(
         device_id=device_id,
@@ -154,11 +181,13 @@ async def create_fence(
 async def get_fence(
     device_id: str,
     fence_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get a single geofence by ID.
     """
+    await _verify_device_ownership(device_id, current_user, db)
     fence = await _get_fence_or_404(device_id, fence_id, db)
     return FenceOut.model_validate(fence)
 
@@ -168,11 +197,13 @@ async def update_fence(
     device_id: str,
     fence_id: int,
     req: FenceUpdateRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Update a geofence. Only provided fields will be updated.
     """
+    await _verify_device_ownership(device_id, current_user, db)
     fence = await _get_fence_or_404(device_id, fence_id, db)
 
     if req.name is not None:
@@ -197,11 +228,13 @@ async def update_fence(
 async def delete_fence(
     device_id: str,
     fence_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Delete a geofence.
     """
+    await _verify_device_ownership(device_id, current_user, db)
     fence = await _get_fence_or_404(device_id, fence_id, db)
     await db.delete(fence)
     await db.commit()

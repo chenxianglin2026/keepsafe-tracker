@@ -27,24 +27,17 @@ logger = logging.getLogger("keepsafe.api.users")
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 # ── Password Hashing ───────────────────────────────────────────
-# Use hashlib.sha256 + os.urandom salt (avoids bcrypt version conflicts)
+# Use bcrypt via passlib (from requirements.txt: passlib[bcrypt])
 
-import hashlib
-import os
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    salt = os.urandom(16).hex()
-    h = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}${h}"
+    return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed: str) -> bool:
-    try:
-        salt, h = hashed.split("$")
-        return hashlib.sha256((salt + plain_password).encode()).hexdigest() == h
-    except (ValueError, AttributeError):
-        return False
+    return pwd_context.verify(plain_password, hashed)
 
 
 # ── JWT ────────────────────────────────────────────────────────
