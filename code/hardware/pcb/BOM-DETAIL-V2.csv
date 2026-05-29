@@ -1,0 +1,29 @@
+序号,元件类型,型号/料号,品牌/厂家,封装/尺寸,规格参数,位号,数量,单价(¥1000pcs),小计(¥),购买渠道,备注
+1,主控SoC,EC618,移芯EigenComm,QFN 7×7mm,Cat.1+BLE5.0+GNSS+内置Flash+PMU,U1,1,16.00,16.00,1688/代理商,https://www.eigencomm.com,22nm低功耗;内置PMU含充电;内置GNSS;内置Flash
+2,RF前端PA,HS8910RF,汉天下Huntersun,QFN 3×3mm,Cat.1 LTE多模PA+开关,U2,1,3.20,3.20,1688/淘宝,https://www.huntersun.com.cn,国产替代Skyworks;兼容EC618
+3,TCXO晶振,OT252026MJBA4SL,扬兴YXC,SMD 3225,26MHz ±2ppm 3.3V,Y1,1,2.50,2.50,立创商城C221299,https://www.yxc.hk,Cat.1必需高精度温补晶振
+4,加速度计,QMA7981,矽睿QST,LGA-12 2×2mm,3轴±16g I2C/SPI 低功耗,U3,1,1.20,1.20,立创商城C2932169,https://www.qstcorp.com,国产替代LIS3DH;封装更小2×2
+5,GPS陶瓷天线,ANT1575SMD-10×3,佳邦WALSIN,SMD 10×3×1.5mm,1575.42MHz 2dBi,ANT1,1,1.80,1.80,立创商城,https://www.walsin.com,EC618内置GNSS;天线直接馈入
+6,SAW滤波器(选配),SAFEA1G57FA0F00,村田Murata,SMD 1.1×0.9mm,GPS L1 1575MHz,FL1,0,0.80,0.00,立创商城C210363,选配;强干扰环境提升GPS性能
+7,4G LTE天线,IPEX-1 FPC 50mm,德诺,SMD IPEX+50mmFPC,700-2700MHz 3dBi,ANT2,1,3.50,3.50,淘宝/1688,,IPEX-1代接口
+8,SIM卡座,NanoSIM 6P H1.5mm,摩凯MOLOR,SMD 12×10×1.5mm,Nano SIM推拉式,J1,1,2.20,2.20,立创商城C29984,https://www.molor.com,含检测pin
+9,USB-C母座,Type-C 6P SMD 沉板,灿科CANCON,6P SMD 9×7×3mm,仅充电VBUS/GND/D+/D-,J2,1,1.00,1.00,立创商城,简化版仅充电
+10,SOS按键,SMD 6×6×3.5mm 260gf,阿尔卑斯ALPS/国产,SMD 6×6×3.5mm,SPST 长行程1.5mm,SW1,1,0.50,0.50,立创商城C318945,长行程;手感明确
+11,蜂鸣器,HYT-8540 8×8×3mm,恒音HYT,SMD 8×8×3mm,3V ≥85dB@10cm,BZ1,1,2.80,2.80,立创商城C102592,https://www.hytsound.com,SOS警报
+12,LED双色,LTST-C193KRKT-2A,光宝Liteon,SMD 0603,红630nm/白 x0.4 y0.3,D1,1,0.30,0.30,立创商城C155837,SOS闪烁红灯;电量指示白灯
+13,振动马达,FM0408 4×8×2mm,金龙机电,SMD 4×8×2mm,3V 9000rpm 0.3G,M1,1,0.50,0.50,淘宝/1688,触觉反馈确认
+14,功率电感,SWPA4020S2R2MT,顺络Sunlord,4×4×2mm,2.2μH 2.5A DCR≤60mΩ,L1,1,0.25,0.25,立创商城C133579,内置PMU DCDC储能
+15,电池,LP402025 200mAh,格林德/赛尔,25×16×3mm,3.7V 200mAh带保护板JST1.25,BAT1,1,5.00,5.00,淘宝/1688,锂聚合物;25×16×3mm更薄
+16,电池连接器,PH1.25 2P 立贴SMD,燊源,JST 1.25mm 2P SMD,J3,1,0.30,0.30,立创商城C277722,电池接口板端
+17,电容MLCC 10μF,GRM188R61A106KE69,村田Murata,0603,10μF 10V X5R,C1-C4,4,0.05,0.20,立创商城C30780,去耦
+18,电容MLCC 0.1μF,GRM188R71H104KA93,村田Murata,0603,0.1μF 50V X7R,C5-C8,4,0.03,0.12,立创商城C30782,去耦
+19,电容MLCC 22pF,GRM1885C1H220JA01,村田Murata,0603,22pF 50V NP0,C9-C10,2,0.03,0.06,立创商城C96041,晶振负载
+20,电阻10kΩ,RC0402JR-0710KL,国巨Yageo,0402,10kΩ ±5%,R1-R4,4,0.005,0.02,立创商城C25085,上拉
+21,电阻47kΩ,RC0402FR-0747KL,国巨Yageo,0402,47kΩ ±1%,R5-R6,2,0.01,0.02,立创商城C25848,NTC分压
+22,电阻0Ω,RC0402JR-070RL,国巨Yageo,0402,0Ω,R7-R8,2,0.005,0.01,立创商城C25084,跳线
+23,ESD保护,ESD5V0L1B-02LS,英飞凌Infineon,TSLP-2-19,5V双向 ±15kV,D2-D6,5,0.08,0.40,立创商城C67514,USB/SIM/天线ESD
+24,PCB,2层FR4 32×22×1.6mm,嘉立创,32×22mm,2层 1oz铜 绿油 喷锡,PCB1,1,3.00,3.00,嘉立创https://www.jlc.com,1000pcs批量
+25,测试点焊盘,TP-1.0mm,/,1.0mm圆形,电源/调试,UART/GPIO,TP1-TP4,4,0.02,0.08,/,
+,,,,,,,BOM合计 (¥),,44.06,,
+,,,,,,,SMT贴片(估),,5.00,,
+,,,,,,,单板总成本(估),,49.06,,

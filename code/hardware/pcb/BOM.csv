@@ -1,0 +1,16 @@
+Ref,Value,Footprint,Quantity,Note
+U1,展锐8910,LGA-10x10,1,主控4G+BLE+GPS集成
+U2,LIS3DH,LGA-16,1,3轴加速度计
+U3,电源管理PMIC,QFN-4x4,1,电池充放电管理
+ANT1,GPS陶瓷天线,SMD-10x3,1,1575MHz
+ANT2,4G LTE天线,IPEX-SMD,1,700-2700MHz
+J1,USB-C,SMD-9x7,1,充电+调试
+J2,MicroSIM卡座,SMD-12x10,1,NanoSIM
+SW1,SOS按键,SMD-6x6,1,长按3秒触发
+BZ1,蜂鸣器85dB,TH-8x8,1,SOS警报
+D1,LED高亮,SMD-0805,1,红/白双色
+M1,振动马达,SMD-4x8,1,触觉反馈
+X1,晶振26MHz,SMD-3225,1,主时钟
+BAT1,电池300mAh,3.7V锂聚合物,1,28x18x4.5mm
+R1-R5,10kOhm,0603,5,上拉/限流
+C1-C8,0.1uF/10uF,0603,8,去耦电容
