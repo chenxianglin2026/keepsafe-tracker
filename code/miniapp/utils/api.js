@@ -4,7 +4,7 @@
  * baseUrl: http://localhost:8000/api/v1
  */
 
-const BASE_URL = 'http://localhost:8000/api/v1'
+const BASE_URL = 'http://43.163.5.90:8000/api/v1'
 
 /**
  * 获取存储的 token
