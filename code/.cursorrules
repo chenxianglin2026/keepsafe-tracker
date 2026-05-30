@@ -1,0 +1,40 @@
+## Tech Stack
+- 前端: 微信小程序 (WeChat Mini Program), WXML + WXSS + JS
+- 后端: Python FastAPI, SQLite (dev) / PostgreSQL (prod)
+- 硬件: ESP32-S3 + EC618 4G + LIS3DH 加速度计 + GNSS
+- 通信: MQTT (EMQX), 4G LTE Cat.1
+- 部署: Docker, Tencent Cloud VPS (43.163.5.90)
+- 构建: ESP-IDF v5.4, esptool
+## Rules
+- 后端端口 8000, dev_mode 用 SQLite 免装 PG
+
+- 固件编译在 VPS 或本地 ESP-IDF 环境
+
+- ESP32-S3 烧录必须用 USB-OTG 口 (usbmodem101), 不用 UART 口
+
+- MQTT Broker: VPS EMQX 1883 端口
+
+- 代码在 ~/projects/keepsafe/code/
+
+- 文档在 ~/projects/tracker/
+
+- Git 管理所有代码
+
+- 字段名 lat/lng/enabled (不是 latitude/longitude/enable)
+
+- 测试账号 test@keepsafe.com / test123456
+
+## Style
+- 提交前跑测试和 lint
+
+- 简洁 commit message
+
+- 固件代码 C 风格, 用 ESP-IDF 组件
+
+- 小程序用适老化设计 (大字体 ×1.4)
+
+- 后端用 FastAPI + SQLAlchemy async
+
+## Cursor Rules
+- Use <context> tags for project references.
+- Follow all rules above without exception.
