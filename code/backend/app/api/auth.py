@@ -7,7 +7,6 @@ EMQX auth backend calls these endpoints to verify device credentials.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -96,7 +95,7 @@ async def authorize_device_acl(
         return AuthResponse(result="deny")
 
     # Verify device still exists and is active
-    stmt = select(Device).where(Device.device_id == device_id, Device.is_active == True)
+    stmt = select(Device).where(Device.device_id == device_id, Device.is_active)
     result = await db.execute(stmt)
     device = result.scalar_one_or_none()
 

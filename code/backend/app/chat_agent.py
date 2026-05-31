@@ -7,15 +7,14 @@ v2.0: 加项目状态面板、快捷查询、走 OpenClaw Gateway
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 import subprocess
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import httpx
-from fastapi import APIRouter, Query, Request, UploadFile, File
+from fastapi import APIRouter, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -65,7 +64,7 @@ async def upload_image(file: UploadFile = File(...)):
     os.makedirs(upload_dir, exist_ok=True)
     
     # 保存文件
-    ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
+    _ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
     save_name = f"{int(time.time())}_{file.filename or 'image'}"
     save_path = os.path.join(upload_dir, save_name)
     
@@ -343,7 +342,7 @@ async def _consumer_echo_only():
         if user_msgs:
             latest = max(user_msgs, key=lambda m: m["timestamp"])
             _last_processed_ts = latest["timestamp"]
-            add_agent_reply(f"（已收到，但未配置AI后端）")
+            add_agent_reply("（已收到，但未配置AI后端）")
         await asyncio.sleep(1)
 
 

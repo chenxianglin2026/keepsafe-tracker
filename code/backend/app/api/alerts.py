@@ -66,7 +66,7 @@ async def list_alerts(
     # First, get the user's device IDs
     device_stmt = select(UserDevice.device_id).where(
         UserDevice.user_id == current_user.user_id,
-        UserDevice.is_bound == True,
+        UserDevice.is_bound,
     )
     device_result = await db.execute(device_stmt)
     device_ids = [row[0] for row in device_result.all()]
@@ -128,7 +128,7 @@ async def mark_alert_read(
     device_stmt = select(UserDevice).where(
         UserDevice.user_id == current_user.user_id,
         UserDevice.device_id == alert.device_id,
-        UserDevice.is_bound == True,
+        UserDevice.is_bound,
     )
     device_result = await db.execute(device_stmt)
     binding = device_result.scalar_one_or_none()
@@ -155,7 +155,7 @@ async def mark_all_alerts_read(
     # Get user's device IDs
     device_stmt = select(UserDevice.device_id).where(
         UserDevice.user_id == current_user.user_id,
-        UserDevice.is_bound == True,
+        UserDevice.is_bound,
     )
     device_result = await db.execute(device_stmt)
     device_ids = [row[0] for row in device_result.all()]
@@ -169,7 +169,7 @@ async def mark_all_alerts_read(
         .where(
             and_(
                 Alert.device_id.in_(device_ids),
-                Alert.is_read == False,
+                Alert.is_read == False,  # noqa: E712
             )
         )
         .values(is_read=True)

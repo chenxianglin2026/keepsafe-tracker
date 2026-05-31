@@ -125,12 +125,12 @@ async def health_check():
 
 # ── Register Routers ─────────────────────────────────────────
 
-from app.api.auth import router as auth_router
-from app.api.devices import router as devices_router
-from app.api.users import router as users_router
-from app.api.fences import router as fences_router
-from app.api.alerts import router as alerts_router
-from app.chat_agent import router as chat_router
+from app.api.auth import router as auth_router  # noqa: E402
+from app.api.devices import router as devices_router  # noqa: E402
+from app.api.users import router as users_router  # noqa: E402
+from app.api.fences import router as fences_router  # noqa: E402
+from app.api.alerts import router as alerts_router  # noqa: E402
+from app.chat_agent import router as chat_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(devices_router)
@@ -140,8 +140,8 @@ app.include_router(alerts_router)
 app.include_router(chat_router)
 
 # 全局 500 错误处理 — 开发调试用
-from fastapi.responses import JSONResponse as JR
-import traceback
+from fastapi.responses import JSONResponse as JR  # noqa: E402
+import traceback  # noqa: E402
 
 @app.exception_handler(Exception)
 async def global_500_handler(request, exc):
@@ -153,7 +153,7 @@ async def global_500_handler(request, exc):
     return JR(status_code=500, content={"detail": "Internal server error"})
 
 # 静态文件服务 — 上传目录
-import os
+import os  # noqa: E402
 uploads_dir = os.path.expanduser("~/projects/keepsafe/uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")

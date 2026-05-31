@@ -7,7 +7,6 @@ Routes alerts to the correct push channel (FCM / APNs) based on user device type
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from app.push.fcm import send_push as fcm_send
 from app.push.apns import get_apns_client

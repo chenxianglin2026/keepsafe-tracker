@@ -9,7 +9,6 @@ from __future__ import annotations
 import jwt
 import logging
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 

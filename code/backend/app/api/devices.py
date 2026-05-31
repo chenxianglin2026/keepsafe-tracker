@@ -13,11 +13,11 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, delete, desc, select, text
+from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.users import get_current_user, User
-from app.db import get_db, Device, Location, SosEvent, Alert, UserDevice, Fence
+from app.db import get_db, Device, Location, SosEvent, UserDevice
 from app.redis_cache import get_device_status, get_latest_location
 
 logger = logging.getLogger("keepsafe.api.devices")
@@ -97,7 +97,7 @@ async def _verify_device_ownership(
         and_(
             UserDevice.user_id == current_user.user_id,
             UserDevice.device_id == device_id,
-            UserDevice.is_bound == True,
+            UserDevice.is_bound,
         )
     )
     result = await db.execute(stmt)

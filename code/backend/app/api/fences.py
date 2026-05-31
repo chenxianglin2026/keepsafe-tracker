@@ -103,7 +103,7 @@ async def _verify_device_ownership(
         and_(
             UserDevice.user_id == current_user.user_id,
             UserDevice.device_id == device_id,
-            UserDevice.is_bound == True,
+            UserDevice.is_bound,
         )
     )
     result = await db.execute(stmt)

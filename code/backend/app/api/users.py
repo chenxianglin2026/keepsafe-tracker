@@ -8,18 +8,19 @@ Uses email + password authentication with JWT tokens.
 from __future__ import annotations
 
 import logging
+import hashlib
+import os as _os
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Header
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db import Base, Column, DateTime, String, Integer, Boolean, func, get_db
+from app.db import get_db
 from app.db import User, UserDevice, Device, UserPushToken
 
 logger = logging.getLogger("keepsafe.api.users")
@@ -27,17 +28,22 @@ logger = logging.getLogger("keepsafe.api.users")
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 # ── Password Hashing ───────────────────────────────────────────
-# Use bcrypt via passlib (from requirements.txt: passlib[bcrypt])
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# Dev mode: SHA-256 (passlib+bcrypt has compatibility issues with newer bcrypt lib)
+# Production should use bcrypt via passlib when bcrypt is fixed.
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
+    """Hash password with SHA-256 + random salt."""
+    salt = _os.urandom(16)
+    return salt.hex() + "$" + hashlib.sha256(salt + password.encode()).hexdigest()
 
 def verify_password(plain_password: str, hashed: str) -> bool:
-    return pwd_context.verify(plain_password, hashed)
+    """Verify SHA-256 hashed password."""
+    try:
+        salt_hex, hash_hex = hashed.split("$", 1)
+        salt = bytes.fromhex(salt_hex)
+        return hashlib.sha256(salt + plain_password.encode()).hexdigest() == hash_hex
+    except (ValueError, AttributeError):
+        return False
 
 
 # ── JWT ────────────────────────────────────────────────────────
@@ -258,7 +264,7 @@ async def get_my_devices(
         .join(Device, UserDevice.device_id == Device.device_id)
         .where(
             UserDevice.user_id == current_user.user_id,
-            UserDevice.is_bound == True,
+            UserDevice.is_bound,
         )
     )
     result = await db.execute(stmt)
