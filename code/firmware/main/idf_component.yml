@@ -1,0 +1,3 @@
+dependencies:
+  espressif/esp_mqtt:
+    version: ">=1.0"

@@ -1,3 +1,6 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
 /*
  * config.h — KeepSafe Configuration (Placeholder-based)
  *
@@ -57,7 +60,7 @@
 #define PDP_CTX_ID                  1
 
 // MQTT Broker
-#define MQTT_BROKER_HOST            "{{PLACEHOLDER_MQTT_HOST}}"  // e.g. "mqtt.yourdomain.com"
+#define MQTT_BROKER_HOST            "43.163.5.90"  // VPS EMQX
 #define MQTT_BROKER_PORT            1883
 #define MQTT_CLIENT_ID              DEVICE_ID
 #define MQTT_KEEPALIVE_S            300
@@ -150,3 +153,6 @@
     ((1ULL << GPIO_SOS_BUTTON) | (1ULL << GPIO_LIS3DH_INT1))
 
 #endif /* CONFIG_H */
+#define USE_WIFI
+#define WIFI_SSID "test"
+#define WIFI_PASSWORD "test1234"
