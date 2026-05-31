@@ -31,7 +31,7 @@ App({
 
     // 用现有 token 验证登录状态
     wx.request({
-      url: 'http://localhost:8000/api/v1/users/profile',
+      url: 'http://43.163.5.90:8000/api/v1/users/profile',
       method: 'GET',
       header: {
         'Authorization': `Bearer ${token}`
