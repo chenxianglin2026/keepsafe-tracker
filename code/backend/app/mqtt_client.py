@@ -267,7 +267,7 @@ class MQTTClient:
 
             if bindings:
                 for row in bindings:
-                    _user_id = row[0]
+                    _ = row[0]  # user_id (reserved for push notification routing)
                     nickname = row[1] or f"设备 {device_id}"
                     # NOTE: device_token here should be the user's push token,
                     # not the device's MQTT token. In production, store push tokens

@@ -143,6 +143,7 @@ app.include_router(chat_router)
 from fastapi.responses import JSONResponse as JR  # noqa: E402
 import traceback  # noqa: E402
 
+
 @app.exception_handler(Exception)
 async def global_500_handler(request, exc):
     tb = traceback.format_exc()

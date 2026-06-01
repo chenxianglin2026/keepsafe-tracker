@@ -31,10 +31,12 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 # Dev mode: SHA-256 (passlib+bcrypt has compatibility issues with newer bcrypt lib)
 # Production should use bcrypt via passlib when bcrypt is fixed.
 
+
 def hash_password(password: str) -> str:
     """Hash password with SHA-256 + random salt."""
     salt = _os.urandom(16)
     return salt.hex() + "$" + hashlib.sha256(salt + password.encode()).hexdigest()
+
 
 def verify_password(plain_password: str, hashed: str) -> bool:
     """Verify SHA-256 hashed password."""

@@ -52,9 +52,11 @@ async def chat_page_old():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/chat/v2")
 
+
 @router.get("/v2", response_class=HTMLResponse)
 async def chat_page_v2():
     return HTMLResponse(CHAT_HTML)
+
 
 @router.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):
@@ -62,16 +64,15 @@ async def upload_image(file: UploadFile = File(...)):
     import aiofiles
     upload_dir = os.path.expanduser("~/projects/keepsafe/uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    
+
     # 保存文件
-    _ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
     save_name = f"{int(time.time())}_{file.filename or 'image'}"
     save_path = os.path.join(upload_dir, save_name)
-    
+
     content = await file.read()
     async with aiofiles.open(save_path, "wb") as f:
         await f.write(content)
-    
+
     # 返回本地可访问 URL
     url = f"http://192.168.110.34:8000/uploads/{save_name}"
     return JSONResponse({"url": url, "path": save_path, "size": len(content)})
@@ -103,7 +104,10 @@ async def quick_command(cmd: str = Query(...)):
     elif cmd == "qa":
         return {"content": _get_qa_summary()}
     elif cmd == "recent":
-        return {"content": "最近完成：工具链全部装好（Homebrew/ImageMagick/Tesseract/KiCad/Blender），手机聊天页面已上线。下一步可启动固件编译、STL渲染或App联调。"}
+        return {"content": (
+            "最近完成：工具链全部装好（Homebrew/ImageMagick/Tesseract/KiCad/Blender），"
+            "手机聊天页面已上线。下一步可启动固件编译、STL渲染或App联调。"
+        )}
     return {"content": "未知指令"}
 
 
@@ -204,8 +208,6 @@ async def chat_consumer_loop():
     后台任务：每秒检查是否有新的用户消息。
     优先走 OpenClaw agent（带完整工具链），不可用时走 DeepSeek API。
     """
-    global _last_processed_ts
-
     logger.info("Chat consumer loop started")
 
     # 检测可用后端
@@ -300,7 +302,11 @@ async def _consumer_via_deepseek():
                     resp = await client.post(
                         "https://api.deepseek.com/chat/completions",
                         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={"model": "deepseek-chat", "messages": [{"role":"user","content":user_text}], "max_tokens": 1024},
+                        json={
+                            "model": "deepseek-chat",
+                            "messages": [{"role": "user", "content": user_text}],
+                            "max_tokens": 1024
+                        },
                     )
 
                     if resp.status_code == 200:
@@ -320,15 +326,15 @@ async def _consumer_via_deepseek():
 def _local_reply(text: str) -> str:
     """本地智能回复（不依赖外部 API）"""
     t = text.strip().lower()
-    if any(w in t for w in ["状态","进度","项目","怎么样"]):
+    if any(w in t for w in ["状态", "进度", "项目", "怎么样"]):
         return _get_project_status()
-    if any(w in t for w in ["团队","成员","谁"]):
+    if any(w in t for w in ["团队", "成员", "谁"]):
         return _get_team_status()
-    if any(w in t for w in ["阻塞","卡","问题","block"]):
+    if any(w in t for w in ["阻塞", "卡", "问题", "block"]):
         return _get_blockers()
-    if any(w in t for w in ["你好","hi","hello","嗨"]):
+    if any(w in t for w in ["你好", "hi", "hello", "嗨"]):
         return "陈总好！项目后端已运行，小程序5页面完成，固件等USB线到了就能烧录。手机聊天已通，随时找我。"
-    if any(w in t for w in ["固件","烧录","开发板","esp"]):
+    if any(w in t for w in ["固件", "烧录", "开发板", "esp"]):
         return "固件已在VPS上编译完成(325KB)。开发板ESP32-S3已识别到，但USB转接头不稳定导致烧录失败。等新线到了就可以烧录。"
     if any(w in t for w in ["小程序"]):
         return "微信小程序5个页面全部完成：登录、地图首页、告警列表、SOS详情、个人中心。AppID已配置，后端已联调。用微信开发者工具打开 ~/projects/keepsafe/code/miniapp/ 就能预览。"
@@ -337,6 +343,7 @@ def _local_reply(text: str) -> str:
 
 async def _consumer_echo_only():
     """降级：只回显。"""
+    global _last_processed_ts
     while True:
         user_msgs = [m for m in messages if m["role"] == "user" and m["timestamp"] > _last_processed_ts]
         if user_msgs:
