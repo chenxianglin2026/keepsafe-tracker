@@ -551,7 +551,10 @@ body {
 .sidebar.open { left: 0; }
 .sidebar h3 { font-size: 16px; color: #4A90D9; margin-bottom: 16px; }
 .sidebar-section { margin-bottom: 20px; }
-.sidebar-section h4 { font-size: 13px; color: #999; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sidebar-section h4 {
+  font-size: 13px; color: #999; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
 .sidebar-item {
   font-size: 14px;
   padding: 8px 0;
@@ -676,7 +679,13 @@ async function doSend() {
       var data = await resp.json();
       var msgs = data.messages || [];
       for (var j=0; j<msgs.length; j++) {
-        if (msgs[j].role === 'agent') { addMsg('agent', msgs[j].content); toggleThinking(false); sendBtn.disabled = false; return; }
+        var check = msgs[j];
+        if (check.role === 'agent') {
+          addMsg('agent', check.content);
+          toggleThinking(false);
+          sendBtn.disabled = false;
+          return;
+        }
       }
     } catch(e) {}
   }

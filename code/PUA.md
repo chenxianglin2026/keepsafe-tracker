@@ -1,27 +1,35 @@
-# Project: KeepSafe — 智能防丢器
+# Project: KeepSafe — 防丢器定位器
 
 ## Tech Stack
-- 前端: 微信小程序 (WeChat Mini Program), WXML + WXSS + JS
-- 后端: Python FastAPI, SQLite (dev) / PostgreSQL (prod)
-- 硬件: ESP32-S3 + EC618 4G + LIS3DH 加速度计 + GNSS
-- 通信: MQTT (EMQX), 4G LTE Cat.1
-- 部署: Docker, Tencent Cloud VPS (43.163.5.90)
-- 构建: ESP-IDF v5.4, esptool
+- 前端: 微信小程序 (5页) + iOS + Android
+- 后端: Python FastAPI + PostgreSQL + Redis + EMQX MQTT
+- 固件: ESP32-S3, C/C++ (ESP-IDF)
+- 部署: Docker (keepsafe-app:8000, keepsafe-emqx:1883, keepsafe-postgres, keepsafe-redis)
+- 推送: FCM + APNs
+- VPS: Tencent Cloud 43.163.5.90, 新加坡一区
+- 3D模型: ~/Desktop/keepsafe/3d-model/pbr/mesh_textured_pbr.obj (陈总唯一指定)
+- 外观设计: 豆包(Doubao)处理, 非 AI 强项
 
 ## Rules
-- 后端端口 8000, dev_mode 用 SQLite 免装 PG
-- 固件编译在 VPS 或本地 ESP-IDF 环境
-- ESP32-S3 烧录必须用 USB-OTG 口 (usbmodem101), 不用 UART 口
-- MQTT Broker: VPS EMQX 1883 端口
-- 代码在 ~/projects/keepsafe/code/
-- 文档在 ~/projects/tracker/
-- Git 管理所有代码
-- 字段名 lat/lng/enabled (不是 latitude/longitude/enable)
-- 测试账号 test@keepsafe.com / test123456
+- 后端端口: 8000
+- 数据库: PostgreSQL (Docker volume 自动持久化)
+- SIM 卡电信 APN: ctnet
+- 固件烧录: USB-OTG 口 (/dev/cu.usbmodem101), 非 UART 口
+- esptool 写 flash --flash_size 16MB
+- 后端字段: lat / lng / enabled (非 latitude / longitude / enable)
+- 测试账号: test@keepsafe.com / test123456
+- seed_mock.py 可插入模拟数据
+- 代码: ~/projects/keepsafe/code/ (后端95%/小程序完整/iOS14文件/Android13文件/固件16文件)
+- 文档: ~/projects/tracker/ (PRD + v1-v3)
+- 尺寸: 38×28×10mm, 飞碟菱形椭圆造型
+- 3D 渲染: 亮色材质 + 多光源, 暗色看不清
+- 安全巡检: 每3h / 健康巡检: 每4h
+- 团队手册: TEAM_HANDBOOK.md
 
 ## Style
-- 提交前跑测试和 lint
-- 简洁 commit message
-- 固件代码 C 风格, 用 ESP-IDF 组件
-- 小程序用适老化设计 (大字体 ×1.4)
-- 后端用 FastAPI + SQLAlchemy async
+- 简洁 commit
+- 测试覆盖 ≥ 基线 (当前 27 tests)
+- 所有 API 必须有鉴权
+- 密码/密钥不写入源代码
+- .env 不提交 Git
+- 汇报: bullet points, 只用结果
