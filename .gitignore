@@ -4,8 +4,15 @@
 *-service-account.json
 google-services.json
 GoogleService-Info.plist
+.env
+.env.*
 secrets/
 credentials/
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
 
 # 虚拟环境
 .venv/
