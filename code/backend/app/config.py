@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     # When True: uses SQLite + fakeredis for local development
     # When False: uses PostgreSQL + Redis (production)
 
+    # ── Chat Agent ──
+    chat_api_key: str = "{{PLACEHOLDER_CHAT_API_KEY}}"
+    # Shared secret for /chat/api/* endpoints. Set via CHAT_API_KEY env var.
+
     # ── CORS ──
     cors_origins: str = ""    # comma-separated list, e.g. "https://app.keepsafe.com,https://dashboard.keepsafe.com"
 

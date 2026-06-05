@@ -26,30 +26,19 @@ App({
   },
 
   silentLogin() {
+    const api = require('./utils/api')
     const token = wx.getStorageSync('token')
     if (!token) return
 
     // 用现有 token 验证登录状态
-    wx.request({
-      url: 'http://43.163.5.90:8000/api/v1/users/profile',
-      method: 'GET',
-      header: {
-        'Authorization': `Bearer ${token}`
-      },
-      success: (res) => {
-        if (res.statusCode === 200) {
-          this.globalData.token = token
-          this.globalData.isLoggedIn = true
-        } else {
-          this.clearAuth()
-        }
-      },
-      fail: () => {
-        // 网络错误不强制登出，保留 token
+    api.getUserInfo()
+      .then(() => {
         this.globalData.token = token
         this.globalData.isLoggedIn = true
-      }
-    })
+      })
+      .catch(() => {
+        this.clearAuth()
+      })
   },
 
   clearAuth() {

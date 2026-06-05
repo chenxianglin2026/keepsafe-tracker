@@ -234,10 +234,7 @@ Page({
   onRefresh() {
     wx.showLoading({ title: '刷新中...', mask: true })
     Promise.all([
-      new Promise((resolve) => {
-        this.fetchDevices()
-        resolve()
-      }),
+      this.fetchDevices(),
       this.fetchUnreadAlertCount()
     ]).finally(() => {
       wx.hideLoading()

@@ -14,13 +14,26 @@ import time
 from typing import Dict, List
 
 import httpx
-from fastapi import APIRouter, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
+
+from app.config import settings
 
 logger = logging.getLogger("keepsafe.chat")
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# ── Auth dependency for chat API endpoints ─────────────────────
+
+async def verify_chat_key(x_chat_key: str = Header(None, alias="X-Chat-Key")):
+    """Verify chat API key header. Returns key if valid, raises 401 otherwise."""
+    if not settings.chat_api_key or settings.chat_api_key.startswith("{{PLACEHOLDER"):
+        # Chat API key not configured — allow access in dev/placeholder mode
+        return None
+    if not x_chat_key or x_chat_key != settings.chat_api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing chat API key")
+    return x_chat_key
 
 # ── Message Store (内存存储，重启丢失) ──────────────────────────
 messages: List[Dict] = []
@@ -55,11 +68,20 @@ async def chat_page_old():
 
 @router.get("/v2", response_class=HTMLResponse)
 async def chat_page_v2():
-    return HTMLResponse(CHAT_HTML)
+    # Inject chat API key into HTML if configured
+    html = CHAT_HTML
+    if settings.chat_api_key and not settings.chat_api_key.startswith("{{PLACEHOLDER"):
+        html = html.replace(
+            "/* CHAT_API_KEY_PLACEHOLDER */",
+            f"const CHAT_API_KEY = '{settings.chat_api_key}';"
+        )
+    else:
+        html = html.replace("/* CHAT_API_KEY_PLACEHOLDER */", "const CHAT_API_KEY = null;")
+    return HTMLResponse(html)
 
 
 @router.post("/api/upload")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(file: UploadFile = File(...), _key: str = Depends(verify_chat_key)):
     """上传图片，返回本地可访问的 URL。"""
     import aiofiles
     upload_dir = os.path.expanduser("~/projects/keepsafe/uploads")
@@ -73,19 +95,19 @@ async def upload_image(file: UploadFile = File(...)):
     async with aiofiles.open(save_path, "wb") as f:
         await f.write(content)
 
-    # 返回本地可访问 URL
-    url = f"http://192.168.110.34:8000/uploads/{save_name}"
+    # 返回本地可访问 URL (relative path, client resolves base)
+    url = f"/uploads/{save_name}"
     return JSONResponse({"url": url, "path": save_path, "size": len(content)})
 
 
 @router.get("/api/messages")
-async def get_messages(since: float = Query(0.0)):
+async def get_messages(since: float = Query(0.0), _key: str = Depends(verify_chat_key)):
     new_msgs = [m for m in messages if m["timestamp"] > since]
     return {"messages": new_msgs, "agent_thinking": agent_thinking}
 
 
 @router.post("/api/send")
-async def send_message(msg: ChatMessage):
+async def send_message(msg: ChatMessage, _key: str = Depends(verify_chat_key)):
     messages.append(msg.model_dump())
     if len(messages) > MAX_MESSAGES:
         messages[:MAX_MESSAGES // 2] = []
@@ -93,7 +115,7 @@ async def send_message(msg: ChatMessage):
 
 
 @router.get("/api/quick-cmd")
-async def quick_command(cmd: str = Query(...)):
+async def quick_command(cmd: str = Query(...), _key: str = Depends(verify_chat_key)):
     """快捷指令：返回事先准备好的摘要，不需要经过 AI。"""
     if cmd == "status":
         return {"content": _get_project_status()}
@@ -112,7 +134,7 @@ async def quick_command(cmd: str = Query(...)):
 
 
 @router.get("/api/status")
-async def project_status():
+async def project_status(_key: str = Depends(verify_chat_key)):
     """项目概览数据，供前端展示。"""
     return {
         "completed": ["KEEP-001 结构/固件/后端基座", "三端 App MVP 源码", "本地后端运行中", "3D OBJ模型生成", "工具链全部安装"],
@@ -629,6 +651,12 @@ body {
 </div>
 
 <script>
+/* CHAT_API_KEY_PLACEHOLDER */
+
+function chatHeaders() {
+  return CHAT_API_KEY ? {'X-Chat-Key': CHAT_API_KEY} : {};
+}
+
 const chatBox = document.getElementById('chatBox');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
@@ -644,7 +672,7 @@ async function quickCmd(id) {
   addMsg('user', cmd);
   toggleThinking(true);
   try {
-    var resp = await fetch('/chat/api/quick-cmd?cmd='+id);
+    var resp = await fetch('/chat/api/quick-cmd?cmd='+id, {headers: chatHeaders()});
     var data = await resp.json();
     addMsg('agent', data.content);
   } catch(e) { addMsg('agent', '请求失败: '+e.message); }
@@ -666,7 +694,7 @@ async function doSend() {
   try {
     await fetch('/chat/api/send', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: Object.assign({'Content-Type': 'application/json'}, chatHeaders()),
       body: JSON.stringify({role:'user', content:text, timestamp:Date.now()/1000})
     });
   } catch(e) { addMsg('agent', '发送失败'); toggleThinking(false); sendBtn.disabled = false; return; }
@@ -675,7 +703,7 @@ async function doSend() {
   for (var i=0; i<60; i++) {
     await sleep(800);
     try {
-      var resp = await fetch('/chat/api/messages?since='+since);
+      var resp = await fetch('/chat/api/messages?since='+since, {headers: chatHeaders()});
       var data = await resp.json();
       var msgs = data.messages || [];
       for (var j=0; j<msgs.length; j++) {

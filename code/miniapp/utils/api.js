@@ -96,19 +96,15 @@ api.getDeviceList = () => api.get('/users/me/devices')
 
 /**
  * 绑定新设备
- * @param {string} deviceId - 设备 ID
- * @param {string} token - 设备绑定码
- * @param {string} userId - 用户 ID
+ * @param {string} bindingCode - 设备绑定码（设备端生成的绑定凭证）
  * @param {string} nickname - 设备昵称（可选）
  * @returns {Promise}
  */
-api.bindDevice = (deviceId, nickname) => {
+api.bindDevice = (bindingCode, nickname) => {
   const app = getApp()
   const userId = app.globalData.userInfo?.user_id || ''
-  const token = app.globalData.token || ''
   return api.post('/devices/bind', {
-    device_id: deviceId,
-    token: token,
+    device_id: bindingCode,
     user_id: userId,
     ...(nickname ? { nickname } : {})
   })
@@ -152,6 +148,17 @@ api.getDeviceLocationHistory = (deviceId, from, to) =>
  * @returns {Promise<Array>}
  */
 api.getSosEvents = (deviceId) => api.get(`/devices/${deviceId}/sos/events`)
+
+// ============================================================
+// 分享相关 API
+// ============================================================
+
+/**
+ * 获取设备位置分享链接
+ * @param {string} deviceId - 设备 ID
+ * @returns {Promise<{share_url: string}>}
+ */
+api.getShareLink = (deviceId) => api.get(`/devices/${deviceId}/share-link`)
 
 // ============================================================
 // 围栏相关 API

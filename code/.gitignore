@@ -49,4 +49,4 @@ sdkconfig
 uploads/
 
 # Docker
-*.dockerignore
+# .dockerignore is committed intentionally
