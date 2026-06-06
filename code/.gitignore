@@ -1,5 +1,8 @@
 # KeepSafe Project - General .gitignore
 
+# Dependencies
+node_modules/
+
 # Environment & Secrets
 .env
 .env.local
