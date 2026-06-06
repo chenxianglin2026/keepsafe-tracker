@@ -154,5 +154,5 @@
 
 #endif /* CONFIG_H */
 #define USE_WIFI
-#define WIFI_SSID "test"
-#define WIFI_PASSWORD "test1234"
+#define WIFI_SSID "{{WIFI_SSID}}"
+#define WIFI_PASSWORD "{{WIFI_PASSWORD}}"
