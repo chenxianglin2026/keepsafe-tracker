@@ -24,6 +24,7 @@ logger = logging.getLogger("keepsafe.chat")
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+
 # ── Auth dependency for chat API endpoints ─────────────────────
 
 async def verify_chat_key(x_chat_key: str = Header(None, alias="X-Chat-Key")):
