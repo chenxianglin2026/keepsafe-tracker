@@ -1,9 +1,9 @@
 # KeepSafe EC618 固件迁移准备
 
 > 文档类型: 固件迁移清单 + 操作指南
-> 日期: 2026-06-05
+> 日期: 2026-06-06 (更新)
 > 当前固件: ESP32-S3 (ESP-IDF) + Air780E 外挂 Modem
-> 目标平台: EC618 (合宙 Air780E 开发板, AT 指令方案)
+> 目标平台: EC618 内核 (合宙 Air780EG 模组, LuatOS 方案)
 
 ---
 
@@ -11,10 +11,12 @@
 
 | 硬件 | 状态 | 备注 |
 |------|------|------|
-| Air780E (EC618) 开发板 | ✅ 已采购 | 2026-06-05 到货，可开始验证 |
-| SIM 卡 | ⬜ 待准备 | 需物联网卡 (电信/移动) |
-| 4G 天线 (IPEX-1) | ⬜ 待确认 | 开发板可能已自带 |
-| USB 转串口 (CH340G) | ⬜ 待准备 | macOS 需安装驱动 |
+| Air780EG (EC618 内核) 开发板 | ✅ 已采购 | 2026-06-05 到货，合宙官方开发板 / 核心板 |
+| Air780EG 模组规格 | ✅ 确认 | EC618 内核, 支持 LTE Cat.1 + GNSS, LuatOS 固件 |
+| SIM 卡 | ⬜ 待准备 | 需物联网卡 (推荐电信 ctnet APN, 或移动 cmnet) |
+| 4G 天线 (IPEX-1) | ⬜ 待确认 | 开发板通常自带 FPC 天线或 IPEX 接口 |
+| USB 转串口 | ✅ 内置 | Air780EG 开发板板载 USB-TypeC + CH340/CH343 串口芯片 |
+| macOS CH340 驱动 | ⬜ 待安装 | 如系统未自动识别，需安装 WCH CH34x 驱动 |
 
 ---
 
@@ -88,143 +90,230 @@
 
 ---
 
-## 三、EC618 开发板到手后第一步操作指南
+## 三、Air780EG (EC618) 到手后精确操作步骤
 
-### Step 1: 硬件连接 (预计 10 分钟)
+### Step 1: 硬件连接 (预计 5 分钟)
+
+Air780EG 开发板通常自带 USB-TypeC 接口和板载 CH340/CH343 串口芯片，无需外接 USB 转串口模块:
 
 ```
-USB-C ─── CH340G USB转串口 ─── EC618 开发板
-          TX ────────────── RX
-          RX ────────────── TX
-          GND ───────────── GND
+Air780EG 开发板 Type-C ─── USB 线 ─── 电脑 USB 口
+  (板载串口芯片自动完成 USB↔UART 转换)
 
-Air780E 开发板上的:
-  - USB 口供电 (5V, 建议用电脑 USB 或独立 5V 电源)
-  - NET 灯: 4G 网络状态指示
-  - 可能需要外接 4G 天线 (IPEX-1)
+开发板上:
+  - Type-C 口供电 + 串口通信 (二合一)
+  - NET 灯: 4G 网络状态指示 (快闪=搜网, 慢闪=已注册)
+  - STA 灯: 模块运行状态
+  - 如无内置天线，需外接 4G 天线 (IPEX-1 接口)
+  - SIM 卡槽: 插入物联网卡 (缺口朝内, 金属触点朝下)
 ```
 
 ### Step 2: 串口连接验证 (预计 5 分钟)
 
 ```bash
-# macOS 识别串口
-ls /dev/cu.*
+# macOS 识别串口 (Air780EG 通常显示为 cu.usbserial-XXXX 或 cu.wchusbserial-XXXX)
+ls /dev/cu.*usbserial*
+ls /dev/cu.*usbmodem*
 
-# 串口通信 (115200 8N1)
+# 串口通信 (115200 8N1, Air780EG 默认波特率)
 screen /dev/cu.usbserial-XXXX 115200
 
-# 发送 AT 测试指令
+# 或使用项目自带脚本自动检测并测试:
+python3 ~/projects/keepsafe/scripts/test_at.py
+
+# 手动发送 AT 测试指令
 AT
 # 应返回: OK
 
 AT+CPIN?
 # 检查 SIM 卡状态, 返回: +CPIN: READY
 
-AT+CSQ
-# 检查信号强度
+AT+CGMR
+# 查看固件版本 (确认是 LuatOS 还是 AT 固件)
+# AT 固件返回类似: "AirM2M_780EG_VXXXX_LTE_AT"
+# LuatOS 固件返回类似: "LuatOS-SoC_VXXXX_EC618"
 ```
 
 ### Step 3: 4G 网络注册验证 (预计 5 分钟)
 
 ```bash
 AT+CGATT=1
-# 附着网络
+# 附着 GPRS 网络
 
 AT+CEREG?
 # 检查网络注册状态
-# 期望: +CEREG: 0,1  (已注册)
+# 期望: +CEREG: 0,1  (已注册 home network)
+#        +CEREG: 0,5  (已注册 roaming)
 
 AT+COPS?
 # 查看运营商
-# 期望返回运营商信息
+# 期望返回类似: +COPS: 0,0,"China Telecom",7
+
+AT+CSQ
+# 信号强度 (0-31, 99=无信号)
+# +CSQ: 20,99  (rssi=20 表示 -77dBm, ber=99 表示未知)
 ```
 
-### Step 4: MQTT 连接测试 (预计 15 分钟)
+### Step 4: PDP 激活 + 网络连通性测试 (预计 5 分钟)
 
 ```bash
-# 配置 PDP 上下文 (电信 APN: ctnet)
+# 配置 PDP 上下文 (电信 APN: ctnet, 移动: cmnet)
 AT+CGDCONT=1,"IP","ctnet"
 
-# 激活 PDP
+# 激活 PDP (cid=1)
 AT+CGACT=1,1
 
-# MQTT 连接 (如果 Air780E 固件支持 MQTT AT 指令)
-AT+MQTTCONNCFG=0,0,"43.163.5.90",1883,0,300,"KS-TEST001"
-AT+MQTTCONN=0,"43.163.5.90",1883,0
+# 检查是否获取到 IP
+AT+CGPADDR=1
+# 期望: +CGPADDR: 1,10.x.x.x (获取到运营商内网 IP 表示成功)
 
-# 发布测试消息
-AT+MQTTPUB=0,"keepsafe/v1/KS-TEST001/heartbeat","{\"test\":1}",0,0
+# Ping 测试外网连通性 (可选)
+AT+PING="43.163.5.90"
+# 期望: +PING: 43.163.5.90,<time>ms,<ttl>
 ```
 
-### Step 5: GNSS 定位测试 (预计 5-10 分钟, 空旷室外)
+### Step 5: LuatOS 固件确认 + MQTT 方案决策 (关键步骤!)
 
 ```bash
-# 开启 GNSS
+# Air780EG 出厂默认烧录 LuatOS 固件，AT 固件需要手动烧录。
+# 如果你拿到手的是 LuatOS 固件 (大概率), MQTT AT 指令不可用。
+# 用 test_at.py 脚本自动检测:
+python3 ~/projects/keepsafe/scripts/test_at.py
+
+# 手动确认固件类型:
+AT+CGMR
+# LuatOS: "LuatOS-SoC_VXXXX_EC618" → MQTT 方案用 LuatOS socket + Lua 实现
+# AT固件: "AirM2M_780EG_VXXXX_LTE_AT" → MQTT 可用 AT+MQTTCONNCFG 等指令
+
+# MQTT AT 指令兼容性检查 (仅 AT 固件)
+AT+MQTT?
+# 返回 OK → MQTT AT 可用
+# 返回 ERROR → 必须用 LuatOS 方案
+```
+
+**决策结果 (推荐):**
+
+**方案 A — LuatOS (推荐, 默认选择):**
+- Air780EG 出厂预装 LuatOS, 无需重新烧录
+- 合宙官方持续维护 LuatOS, 生态成熟
+- MQTT 通过 Lua socket 库实现, 灵活可控
+- 项目现有 C 代码逻辑直接翻译为 Lua
+- JSON 构建/NMEA 解析/状态机在 Lua 中简洁实现
+- 无需外挂 MCU (ESP32-S3可省去), Air780EG 单芯片搞定
+
+**方案 B — AT 固件 (备选):**
+- 需要手动烧录合宙 AT 固件
+- MQTT 通过 AT+MQTTCONNCFG/PUB/SUB 等指令
+- 适合已有 MCU (ESP32-S3) 做主控的场景
+- AT 指令串行执行, 实时性不如 LuatOS 事件驱动
+
+### Step 6: GNSS 定位测试 (预计 5-10 分钟, 空旷室外)
+
+```bash
+# 开启 GNSS (LuatOS 固件可用 AT 指令控制)
 AT+CGNSPWR=1
 
 # 等待定位 (冷启动约 35 秒)
-# 查询 NMEA 数据
+# 查询定位结果
 AT+CGNSINF
 
 # 期望返回类似:
-# +CGNSINF: 1,1,20260605120000.000,22.123456,113.654321,100.5,2.5,180.0,1,10,1.5,3
+# +CGNSINF: 1,1,20260606120000.000,22.123456,113.654321,100.5,2.5,180.0,1,10,1.5,3
+
+# 也可使用 AT+CGPSINFO (部分固件支持)
+AT+CGPSINFO
+# 返回: +CGPSINFO: 2230.123456,N,11339.654321,E,...
 ```
 
-### Step 6: 确认开发环境
+### Step 7: PSM 省电配置验证
 
 ```bash
-# 确认 Air780E 固件版本
-AT+CGMR
-# 记录版本号
-
-# 确认支持哪些 MQTT AT 命令
-AT+MQTT?
-# 如果返回 ERROR, 说明固件需要升级或使用 LuatOS 脚本方案
-
-# 确认 PSM 支持
+# 查询 PSM 状态
 AT+CPSMS?
+
+# 配置 PSM (LuatOS 固件)
+# Active Time (T3324): 10s, TAU (T3412): 54min
+AT+CPSMS=1,,,"00001000","00000101"
+
+# 查询 eDRX 状态
+AT+CEDRXS?
 ```
 
 ### 关键验证清单
 
 - [ ] 串口通信正常 (AT 返回 OK)
 - [ ] SIM 卡识别 (AT+CPIN? → READY)
-- [ ] 4G 附着成功 (AT+CEREG? → 已注册)
-- [ ] MQTT 连接到 VPS Broker (43.163.5.90:1883)
-- [ ] MQTT 发布消息成功
+- [ ] 4G 网络注册成功 (AT+CEREG? → 0,1 或 0,5)
+- [ ] PDP 激活获取 IP (AT+CGPADDR=1 → 有效 IP)
+- [ ] 确认固件类型: LuatOS / AT (AT+CGMR)
 - [ ] GNSS 定位获取到有效坐标
-- [ ] 记录固件版本号
-- [ ] 确认 MQTT AT 指令集兼容性
+- [ ] PSM/eDRX 省电配置确认
+- [ ] 根据固件类型确定 MQTT 实现方案
+- [ ] 使用 test_at.py 脚本输出测试报告
 
-### 重要决策点
+### 重要决策点: LuatOS vs AT 最终确认
 
-**如果 Air780E 的 MQTT AT 指令不可用:**
-→ 改用 LuatOS 脚本方案 (合宙官方提供, 基于 Lua)
+**Air780EG (EC618) 出厂默认为 LuatOS 固件。** 合宙官方推荐使用 LuatOS 进行二次开发。
 
-**如果 MQTT 可用:**
-→ 继续用 AT 指令方案, 只需翻译 C 代码中的 AT 命令格式
+| 对比维度 | LuatOS (推荐) | AT 固件 (备选) |
+|---------|--------------|---------------|
+| 出厂状态 | ✅ 预装，无需烧录 | ❌ 需手动烧录 AT 固件 |
+| MQTT 实现 | Lua socket 库 (灵活) | AT+MQTT* 指令集 (受限) |
+| 主控架构 | Air780EG 单芯片 | 需外挂 MCU (ESP32-S3) |
+| 事件驱动 | ✅ 原生支持 | ❌ AT 轮询，实时性差 |
+| PSM 深度睡眠 | ✅ LuatOS API 原生支持 | AT+CPSMS 配置 |
+| 固件生态 | 合宙主力维护 | 部分高级功能不可用 |
+| 开发效率 | 逻辑翻译 C→Lua | 仅发送 AT 命令 |
+| 社区支持 | 活跃 (LuatOS 社区) | 一般 |
+
+**最终决策: 采用方案 A — LuatOS 固件方案**
+
+迁移路径:
+```
+Phase 1: 用 test_at.py 验证硬件链路 + 确认固件类型 (1 小时)
+Phase 2: LuatOS 核心逻辑翻译 (2-3 周)
+  - C 代码中的 JSON 构建、状态机、NMEA 解析翻译为 Lua
+  - MQTT 使用 LuatOS socket + mqtt 库
+  - 传感器驱动 (LIS3DH I2C) 使用 LuatOS GPIO/I2C API
+Phase 3: 联调测试 + 省电优化 (1 周)
+```
 
 ---
 
-## 四、迁移策略
+## 四、迁移策略 (LuatOS 方案)
 
-### 推荐方案: AT 指令 → LuatOS 脚本
+### 已确认方案: C/ESP-IDF → LuatOS (Air780EG 单芯片)
 
-由于 EC618 (Air780E) 官方主推 LuatOS, MQTT AT 指令可能在部分固件版本中不可用。
-推荐迁移路径:
+Air780EG 出厂预装 LuatOS 固件，且 EC618 是合宙主力维护平台。
+采用 LuatOS 单芯片方案，省去 ESP32-S3 外挂 MCU。
 
-```
-Phase 1: 用 AT 命令验证硬件链路 (1 天)
-Phase 2: 如果 MQTT AT 可用 → 翻译 C 逻辑到 AT 命令序列 (2 周)
-Phase 3: 如果 MQTT AT 不可用 → 用 LuatOS 重写核心逻辑 (3 周)
+### AT 指令快速验证脚本
+
+项目已提供自动化测试脚本 `scripts/test_at.py`:
+```bash
+# 自动检测 Air780EG 并运行基础 AT 测试 (AT → AT+CSQ → AT+CGPSINFO)
+python3 ~/projects/keepsafe/scripts/test_at.py
+
+# 完整测试套件 (SIM卡/网络/固件/GNSS/PSM)
+python3 ~/projects/keepsafe/scripts/test_at.py --full
+
+# 列出所有可用串口
+python3 ~/projects/keepsafe/scripts/test_at.py --list
 ```
 
 ### 可复用的模块 (直接翻译/迁移)
 
-1. **JSON 构建逻辑** (main.c 中 build_*_json 函数) — 直接翻译为 LuatOS
-2. **NMEA 解析** (gps.c) — 逻辑简单, 可能不需要 (EC618 直接输出 GNSS 解析结果)
-3. **状态机逻辑** (power.c 状态转换) — 概念翻译
-4. **LIS3DH 寄存器值** (accel.h 寄存器地址) — 直接复用
+1. **JSON 构建逻辑** (main.c 中 build_*_json 函数) — 直接翻译为 LuatOS Lua 表 + json.encode()
+2. **NMEA 解析** (gps.c) — 逻辑简单，可能不需要 (EC618 直接输出 GNSS 解析结果 via CGNSINF)
+3. **状态机逻辑** (power.c 状态转换) — 概念翻译为 Lua 事件驱动
+4. **LIS3DH 寄存器值** (accel.h 寄存器地址) — 直接复用，LuatOS I2C API 调用
+
+### LuatOS 开发资源
+
+- 合宙 LuatOS 官方文档: https://docs.openluat.com/
+- Air780EG 产品页: https://docs.openluat.com/air780eg/
+- LuatOS MQTT 库: socket + mqtt 标准库
+- 固件烧录工具: Luatools (合宙官方), 支持固件下载/脚本烧录/日志查看
 
 ---
 
