@@ -109,7 +109,7 @@ Page({
    * 获取设备列表
    */
   fetchDevices() {
-    api.getDeviceList()
+    return api.getDeviceList()
       .then((devices) => {
         const list = Array.isArray(devices) ? devices : []
         this.setData({
@@ -215,7 +215,7 @@ Page({
    * 获取未读告警数
    */
   fetchUnreadAlertCount() {
-    api.getAlertList({ page_size: 1 })
+    return api.getAlertList({ page_size: 1 })
       .then((result) => {
         if (result && result.total !== undefined) {
           this.setData({ unreadAlertCount: result.total })
