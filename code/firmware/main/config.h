@@ -153,6 +153,3 @@
     ((1ULL << GPIO_SOS_BUTTON) | (1ULL << GPIO_LIS3DH_INT1))
 
 #endif /* CONFIG_H */
-#define USE_WIFI
-#define WIFI_SSID "{{WIFI_SSID}}"
-#define WIFI_PASSWORD "{{WIFI_PASSWORD}}"
