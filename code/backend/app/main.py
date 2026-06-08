@@ -8,8 +8,10 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +23,7 @@ from app.mqtt_client import get_mqtt_client
 from app.redis_cache import close_redis
 from app.push.fcm import init_fcm
 from app.chat_agent import chat_consumer_loop
+from app.db import async_session_factory
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
@@ -51,15 +54,23 @@ async def lifespan(app: FastAPI):
     # 3. Start chat consumer background task
     chat_task = asyncio.create_task(chat_consumer_loop())
 
+    # 4. Start device offline detection background task
+    offline_task = asyncio.create_task(_offline_detection_loop())
+
     yield
 
     # ── Shutdown ──
     logger.info("KeepSafe backend shutting down...")
 
-    # 0. Cancel chat consumer
+    # 0. Cancel chat consumer and offline detector
     chat_task.cancel()
     try:
         await chat_task
+    except asyncio.CancelledError:
+        pass
+    offline_task.cancel()
+    try:
+        await offline_task
     except asyncio.CancelledError:
         pass
 
@@ -76,6 +87,95 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
     logger.info("KeepSafe backend shut down complete")
+
+
+# ── Offline Detection Loop ──────────────────────────────────
+
+async def _offline_detection_loop():
+    """Background task: periodically checks for offline devices and creates alerts.
+
+    Runs every 60 seconds. A device is considered offline if:
+    - Its Redis status entry has expired (no update in 180s), OR
+    - Its DB last_seen is older than 5 minutes.
+
+    Throttled: only generates one offline alert per device per hour.
+    """
+    await asyncio.sleep(30)  # Initial delay so the system settles
+
+    while True:
+        try:
+            from app.redis_cache import get_redis
+            from sqlalchemy import select as sa_select
+            from app.db import Device, UserDevice
+
+            r = await get_redis()
+
+            async with async_session_factory() as session:
+                # Find devices whose last_seen is older than 5 minutes
+                cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+
+                result = await session.execute(
+                    sa_select(Device).where(
+                        Device.last_seen.isnot(None),
+                        Device.last_seen < cutoff,
+                        Device.is_active == True,  # noqa: E712
+                    )
+                )
+                stale_devices = result.scalars().all()
+
+                for device in stale_devices:
+                    # Check Redis: if status entry still exists, device is probably online
+                    # (Redis TTL is 180s, so if it exists, last update was within 180s)
+                    status_key = f"device:{device.device_id}:status"
+                    redis_status = await r.get(status_key)
+                    if redis_status:
+                        continue  # Redis still has status, device is online
+
+                    # Throttle: only one offline alert per hour per device
+                    throttle_key = f"offline_throttle:{device.device_id}"
+                    if await r.exists(throttle_key):
+                        continue
+
+                    await r.set(throttle_key, "1", ex=3600)  # 1 hour throttle
+
+                    # Check if the device is bound to any user
+                    bind_result = await session.execute(
+                        sa_select(UserDevice).where(
+                            UserDevice.device_id == device.device_id,
+                            UserDevice.is_bound == True,  # noqa: E712
+                        )
+                    )
+                    binding = bind_result.scalar_one_or_none()
+
+                    if not binding:
+                        continue  # Unbound device, skip
+
+                    # Create offline alert
+                    await session.execute(
+                        """
+                        INSERT INTO alerts (device_id, ts, alert_type, payload)
+                        VALUES (:device_id, :ts, 'offline', :payload)
+                        """,
+                        {
+                            "device_id": device.device_id,
+                            "ts": datetime.now(timezone.utc),
+                            "payload": json.dumps({
+                                "last_seen": device.last_seen.isoformat() if device.last_seen else None,
+                                "reason": "device_stopped_reporting",
+                            }),
+                        },
+                    )
+                    await session.commit()
+                    logger.warning("Offline alert created for %s (last seen: %s)",
+                                   device.device_id, device.last_seen)
+
+            await asyncio.sleep(60)  # Check every 60 seconds
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error("Offline detection error: %s", exc, exc_info=True)
+            await asyncio.sleep(60)
 
 
 # ── FastAPI App ──────────────────────────────────────────────

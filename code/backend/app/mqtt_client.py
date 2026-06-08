@@ -9,13 +9,16 @@ Subscribes to all 5 device topics:
   - keepsafe/v1/{device_id}/version
 
 Processes messages, writes to TimescaleDB, updates Redis cache, triggers push.
+Checks geofences on location updates and detects low battery from location data.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from math import radians, sin, cos, sqrt, asin
 from typing import Optional
 
 import gmqtt
@@ -29,6 +32,19 @@ logger = logging.getLogger("keepsafe.mqtt")
 
 # ── GMQTT Stop (sentinel) ──
 STOP = object()
+
+# ── Geofence state tracking (in-process, avoids duplicate alerts) ──
+# Key: "device_id:fence_id" -> "inside" | "outside"
+_fence_states: dict[str, str] = {}
+
+
+def _haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate great-circle distance in meters between two coordinates."""
+    R = 6371000  # Earth radius in meters
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+    return R * 2 * asin(sqrt(a))
 
 
 class MQTTClient:
@@ -55,7 +71,13 @@ class MQTTClient:
         logger.warning("MQTT disconnected: %s", exc)
 
     def _on_message(self, client, topic, payload, qos, properties):
-        """Handle incoming MQTT messages."""
+        """Handle incoming MQTT messages.
+
+        NOTE: gmqtt's on_message callback is synchronous. We must schedule
+        async handlers via asyncio.create_task() to actually execute them.
+        Without this, all coroutines would be created but never awaited,
+        resulting in zero activity (the "MQTT silent" bug).
+        """
         try:
             data = json.loads(payload.decode("utf-8"))
             msg_type = data.get("type", "unknown")
@@ -63,16 +85,18 @@ class MQTTClient:
 
             logger.debug("MQTT msg: type=%s device=%s topic=%s", msg_type, device_id, topic)
 
+            loop = asyncio.get_running_loop()
+
             if msg_type == "location":
-                self._handle_location(device_id, data)
+                loop.create_task(self._handle_location(device_id, data))
             elif msg_type == "heartbeat":
-                self._handle_heartbeat(device_id, data)
+                loop.create_task(self._handle_heartbeat(device_id, data))
             elif msg_type == "sos":
-                self._handle_sos(device_id, data)
+                loop.create_task(self._handle_sos(device_id, data))
             elif msg_type == "low_battery":
-                self._handle_low_battery(device_id, data)
+                loop.create_task(self._handle_low_battery(device_id, data))
             elif msg_type == "version":
-                self._handle_version(device_id, data)
+                loop.create_task(self._handle_version(device_id, data))
             else:
                 logger.warning("Unknown message type: %s from %s", msg_type, device_id)
 
@@ -82,7 +106,7 @@ class MQTTClient:
             logger.error("MQTT: error processing message on %s: %s", topic, exc, exc_info=True)
 
     async def _handle_location(self, device_id: str, data: dict):
-        """Process location report: DB insert + Redis update + LBS resolution."""
+        """Process location report: DB insert + Redis update + geofence check + LBS."""
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
         # 1. Update Redis cache immediately
@@ -119,7 +143,6 @@ class MQTTClient:
 
         # 3. Write to TimescaleDB
         async with async_session_factory() as session:
-            # Insert location
             await session.execute(
                 """
                 INSERT INTO locations
@@ -174,8 +197,137 @@ class MQTTClient:
             lbs_result = await resolve_lbs(cell_id)
             if lbs_result:
                 logger.info("LBS resolved for %s: (%.4f, %.4f)", device_id, lbs_result["lat"], lbs_result["lng"])
-                # We don't overwrite the DB record here; LBS data can be returned
-                # via a separate API call or used as fallback in location endpoint
+
+        # 5. Check geofences (enter/exit detection)
+        await self._check_geofences(device_id, lat, lng, ts)
+
+        # 6. Auto-detect low battery from location reports (< 20%)
+        battery = data.get("battery")
+        if battery is not None and battery < 20:
+            # Avoid duplicate alerts: check if we recently alerted for this device
+            # Simple throttle: only alert once per 6 hours per device
+            throttle_key = f"low_battery_throttle:{device_id}"
+            from app.redis_cache import get_redis
+            r = await get_redis()
+            if not await r.exists(throttle_key):
+                await r.set(throttle_key, "1", ex=21600)  # 6 hours
+                logger.warning("Auto low-battery for %s: %d%% from location report", device_id, battery)
+                async with async_session_factory() as session:
+                    await session.execute(
+                        """
+                        INSERT INTO alerts (device_id, ts, alert_type, payload)
+                        VALUES (:device_id, :ts, 'low_battery', :payload)
+                        """,
+                        {
+                            "device_id": device_id,
+                            "ts": ts,
+                            "payload": json.dumps({"battery": battery, "source": "location_report"}),
+                        },
+                    )
+                    await session.commit()
+
+    async def _check_geofences(self, device_id: str, lat: float, lng: float, ts: datetime):
+        """Check all enabled fences for this device and fire enter/exit alerts."""
+        if lat is None or lng is None or (lat == 0.0 and lng == 0.0):
+            return  # No valid GPS fix, skip geofence check
+
+        try:
+            async with async_session_factory() as session:
+                from sqlalchemy import select as sa_select
+                from app.db import Fence
+
+                result = await session.execute(
+                    sa_select(Fence).where(
+                        Fence.device_id == device_id,
+                        Fence.enabled == True,  # noqa: E712
+                    )
+                )
+                fences = result.scalars().all()
+
+                for fence in fences:
+                    distance = _haversine_distance(lat, lng, fence.lat, fence.lng)
+                    inside = distance <= fence.radius
+                    state_key = f"{device_id}:{fence.id}"
+                    prev_state = _fence_states.get(state_key, "unknown")
+
+                    if prev_state == "unknown":
+                        # First location for this fence pair
+                        _fence_states[state_key] = "inside" if inside else "outside"
+                        continue
+
+                    if prev_state == "outside" and inside:
+                        # Entered fence
+                        _fence_states[state_key] = "inside"
+                        await self._record_geofence_alert(device_id, fence, "enter", ts, lat, lng)
+                    elif prev_state == "inside" and not inside:
+                        # Exited fence
+                        _fence_states[state_key] = "outside"
+                        await self._record_geofence_alert(device_id, fence, "exit", ts, lat, lng)
+                    elif prev_state == "inside" and inside:
+                        # Still inside - update state but no new alert
+                        pass
+                    elif prev_state == "outside" and not inside:
+                        # Still outside - no change
+                        pass
+        except Exception as exc:
+            logger.error("Geofence check failed for %s: %s", device_id, exc, exc_info=True)
+
+    async def _record_geofence_alert(self, device_id: str, fence, event: str, ts: datetime, lat: float, lng: float):
+        """Record a geofence enter/exit alert and send push notification."""
+        event_label = "进入" if event == "enter" else "离开"
+
+        async with async_session_factory() as session:
+            await session.execute(
+                """
+                INSERT INTO alerts (device_id, ts, alert_type, payload)
+                VALUES (:device_id, :ts, :alert_type, :payload)
+                """,
+                {
+                    "device_id": device_id,
+                    "ts": ts,
+                    "alert_type": f"geofence_{event}",
+                    "payload": json.dumps({
+                        "fence_id": fence.id,
+                        "fence_name": fence.name,
+                        "event": event,
+                        "lat": lat,
+                        "lng": lng,
+                        "radius": fence.radius,
+                    }),
+                },
+            )
+            await session.commit()
+
+        logger.info("Geofence %s: device=%s fence=%s(%s)", event, device_id, fence.name, fence.id)
+
+        # Push notification
+        try:
+            from app.push import send_geofence_push
+
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    """
+                    SELECT ud.nickname, d.device_token
+                    FROM user_devices ud
+                    JOIN devices d ON d.device_id = ud.device_id
+                    WHERE ud.device_id = :device_id AND ud.is_bound = TRUE
+                    LIMIT 1
+                    """,
+                    {"device_id": device_id},
+                )
+                row = result.fetchone()
+
+            if row:
+                nickname = row[0] or device_id
+                await send_geofence_push(
+                    device_token=device_id,  # placeholder
+                    platform="android",
+                    fence_name=fence.name,
+                    event=event,
+                    device_name=nickname,
+                )
+        except Exception as exc:
+            logger.error("Geofence push notification failed: %s", exc)
 
     async def _handle_heartbeat(self, device_id: str, data: dict):
         """Process heartbeat: update Redis status + DB last_seen."""
@@ -235,7 +387,7 @@ class MQTTClient:
             await session.execute(
                 """
                 INSERT INTO alerts (device_id, ts, alert_type, payload)
-                VALUES (:device_id, :ts, 'sos', :payload::jsonb)
+                VALUES (:device_id, :ts, 'sos', :payload)
                 """,
                 {
                     "device_id": device_id,
@@ -288,7 +440,7 @@ class MQTTClient:
             await session.execute(
                 """
                 INSERT INTO alerts (device_id, ts, alert_type, payload)
-                VALUES (:device_id, :ts, 'low_battery', :payload::jsonb)
+                VALUES (:device_id, :ts, 'low_battery', :payload)
                 """,
                 {
                     "device_id": device_id,
@@ -357,7 +509,6 @@ class MQTTClient:
         self.client.on_message = self._on_message
 
         # EMQX auth — backend uses a dedicated service account
-        # In production, use a specific backend MQTT user
         self.client.set_auth_credentials("keepsafe-backend", "{{PLACEHOLDER_EMQX_BACKEND_PASSWORD}}")
 
         logger.info("Connecting to EMQX at %s:%d...", settings.emqx_host, settings.emqx_port)
