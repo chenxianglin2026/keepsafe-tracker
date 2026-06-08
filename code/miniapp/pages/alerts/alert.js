@@ -50,7 +50,7 @@ Page({
     }
 
     if (currentFilter !== 'all') {
-      params.type = currentFilter
+      params.alert_type = currentFilter
     }
 
     this.setData({ loading: page === 1 })
@@ -125,9 +125,10 @@ Page({
     }
 
     // 如果是 SOS 告警，打开详情页
-    if (item.type === 'sos') {
+    if (item.alert_type === 'sos') {
+      const p = item.payload || {}
       wx.navigateTo({
-        url: `/pages/sos-detail/sos-detail?device_id=${item.device_id || ''}&device_name=${encodeURIComponent(item.device_name || '')}&alert_id=${item.id}&latitude=${item.latitude || 0}&longitude=${item.longitude || 0}&timestamp=${item.created_at || ''}`
+        url: `/pages/sos-detail/sos-detail?device_id=${item.device_id || ''}&device_name=${encodeURIComponent(p.device_name || '')}&alert_id=${item.id}&latitude=${p.lat || 0}&longitude=${p.lng || 0}&timestamp=${item.ts || ''}`
       })
       return
     }

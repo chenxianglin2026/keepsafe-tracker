@@ -40,6 +40,7 @@ Page({
     // 绑定弹窗
     bindVisible: false,
     bindDeviceId: '',
+    bindDeviceToken: '',
     bindDeviceName: ''
   },
 
@@ -158,26 +159,27 @@ Page({
     const circles = []
 
     this.data.deviceList.forEach((device, index) => {
-      if (!device.latitude || !device.longitude) return
+      // Skip devices without location data
+      if (!device.latitude && !device.lat) return
 
-      const { status, className } = mapUtil.getDeviceStatus(
-        device.last_report_time,
-        device.battery
-      )
+      const lat = device.latitude || device.lat
+      const lng = device.longitude || device.lng
+      const name = device.nickname || device.name || '设备'
+      const isActive = device.is_active !== false
 
       // 设备标记
       markers.push({
         id: index,
-        latitude: device.latitude,
-        longitude: device.longitude,
-        title: device.name || '设备',
-        iconPath: status === '在线'
+        latitude: lat,
+        longitude: lng,
+        title: name,
+        iconPath: isActive
           ? '../../images/marker-online.png'
           : '../../images/marker-offline.png',
         width: 44,
         height: 52,
         callout: {
-          content: `${device.name || '设备'} - ${status}`,
+          content: `${name} - ${isActive ? '在线' : '离线'}`,
           fontSize: 12,
           borderRadius: 8,
           borderWidth: 0,
@@ -187,7 +189,7 @@ Page({
           textAlign: 'center'
         },
         label: {
-          content: device.name || '设备',
+          content: name,
           fontSize: 11,
           color: '#FFFFFF',
           x: 0,
@@ -291,16 +293,18 @@ Page({
    */
   onLocateDevice(e) {
     const device = e.detail.device
-    if (device && device.latitude && device.longitude) {
+    const lat = device.latitude || device.lat
+    const lng = device.longitude || device.lng
+    if (device && lat && lng) {
       this.setData({
         mapCenter: {
-          latitude: device.latitude,
-          longitude: device.longitude
+          latitude: lat,
+          longitude: lng
         },
         mapScale: 16
       })
       wx.showToast({
-        title: `定位到 ${device.name || '设备'}`,
+        title: `定位到 ${device.nickname || device.name || '设备'}`,
         icon: 'none',
         duration: 1500
       })
@@ -330,10 +334,10 @@ Page({
             fenceVisible: true,
             fenceDeviceId: device.device_id,
             fenceEditData: {
-              lat: device.latitude,
-              lng: device.longitude,
+              lat: device.latitude || device.lat,
+              lng: device.longitude || device.lng,
               radius: 500,
-              name: `${device.name || '设备'} 围栏`,
+              name: `${device.nickname || device.name || '设备'} 围栏`,
               enabled: true
             }
           })
@@ -359,8 +363,9 @@ Page({
     api.getShareLink(device.device_id)
       .then((result) => {
         wx.hideLoading()
+        const name = device.nickname || device.name || '设备'
         wx.showSharePanel({
-          title: `查看 ${device.name || '设备'} 的位置`,
+          title: `查看 ${name} 的位置`,
           path: `/pages/share/index?device_id=${device.device_id}`,
           imageUrl: '../../images/share-banner.png'
         })
@@ -438,6 +443,7 @@ Page({
     this.setData({
       bindVisible: true,
       bindDeviceId: '',
+      bindDeviceToken: '',
       bindDeviceName: ''
     })
   },
@@ -450,20 +456,28 @@ Page({
     this.setData({ bindDeviceId: e.detail.value })
   },
 
+  onBindTokenInput(e) {
+    this.setData({ bindDeviceToken: e.detail.value })
+  },
+
   onBindNameInput(e) {
     this.setData({ bindDeviceName: e.detail.value })
   },
 
   onBindConfirm() {
-    const { bindDeviceId, bindDeviceName } = this.data
+    const { bindDeviceId, bindDeviceToken, bindDeviceName } = this.data
     if (!bindDeviceId.trim()) {
       wx.showToast({ title: '请输入设备码', icon: 'none' })
+      return
+    }
+    if (!bindDeviceToken.trim()) {
+      wx.showToast({ title: '请输入设备密钥', icon: 'none' })
       return
     }
 
     wx.showLoading({ title: '绑定中...', mask: true })
 
-    api.bindDevice(bindDeviceId.trim(), bindDeviceName.trim() || undefined)
+    api.bindDevice(bindDeviceId.trim(), bindDeviceToken.trim(), bindDeviceName.trim() || undefined)
       .then(() => {
         wx.hideLoading()
         wx.showToast({ title: '绑定成功', icon: 'success' })

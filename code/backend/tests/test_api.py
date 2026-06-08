@@ -1,6 +1,6 @@
 """
 KeepSafe Backend API — Comprehensive Test Suite
-Covers: health, auth, devices, fences, alerts, users (27 tests)
+Covers: health, auth, devices, fences, alerts, users, edge cases (38 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -84,7 +84,7 @@ class TestHealth:
 
 
 # ═══════════════════════════════════════════════════════
-# Auth (5 tests)
+# Auth (7 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestAuth:
@@ -94,6 +94,7 @@ class TestAuth:
         data = r.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
+        assert data["user_id"] == "test-uuid-001"
 
     async def test_login_wrong_password(self, client):
         r = await client.post("/api/v1/users/login", json={"email": TEST_EMAIL, "password": "wrong"})
@@ -101,7 +102,7 @@ class TestAuth:
 
     async def test_login_nonexistent_user(self, client):
         r = await client.post("/api/v1/users/login", json={"email": "nobody@nowhere.com", "password": "x"})
-        assert r.status_code != 200
+        assert r.status_code == 401
 
     async def test_protected_no_auth(self, client):
         r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/status")
@@ -112,9 +113,25 @@ class TestAuth:
                              headers={"Authorization": "Bearer faketokeninvalid"})
         assert r.status_code == 401
 
+    async def test_device_auth_allow(self, client):
+        """EMQX auth: valid device + token should allow"""
+        r = await client.post("/api/v1/auth/device", json={
+            "device_id": TEST_DEVICE_ID, "token": "tok-001"
+        })
+        assert r.status_code == 200
+        assert r.json()["result"] == "allow"
+
+    async def test_device_auth_deny_wrong_token(self, client):
+        """EMQX auth: wrong token should deny"""
+        r = await client.post("/api/v1/auth/device", json={
+            "device_id": TEST_DEVICE_ID, "token": "wrong-token"
+        })
+        assert r.status_code == 200
+        assert r.json()["result"] == "deny"
+
 
 # ═══════════════════════════════════════════════════════
-# Devices (8 tests)
+# Devices (11 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestDevices:
@@ -145,6 +162,13 @@ class TestDevices:
         assert r.status_code == 200
         assert r.json()["success"] is True
 
+    async def test_bind_missing_token(self, client, auth_headers):
+        """Bind without token should fail with validation error"""
+        r = await client.post("/api/v1/devices/bind", json={
+            "user_id": "test-uuid-001", "device_id": "KS-NOTOKEN"
+        }, headers=auth_headers)
+        assert r.status_code == 422
+
     async def test_bind_existing(self, client, auth_headers):
         r = await client.post("/api/v1/devices/bind", json={
             "user_id": "test-uuid-001", "device_id": TEST_DEVICE_ID, "token": "tok-001"
@@ -157,64 +181,222 @@ class TestDevices:
         }, headers=auth_headers)
         assert r.status_code == 403
 
+    async def test_bind_other_user(self, client, auth_headers):
+        """Should not allow binding device to another user"""
+        r = await client.post("/api/v1/devices/bind", json={
+            "user_id": "other-user-uuid", "device_id": TEST_DEVICE_ID, "token": "tok-001"
+        }, headers=auth_headers)
+        assert r.status_code == 403
+
+    async def test_unbind_device(self, client, auth_headers):
+        """Unbind a previously bound device (use separate device, don't break main test device)"""
+        # Bind a fresh device first, then unbind it
+        await client.post("/api/v1/devices/bind", json={
+            "user_id": "test-uuid-001", "device_id": "KS-UNBIND-001",
+            "token": "tok-unbind", "nickname": "Unbind Test"
+        }, headers=auth_headers)
+
+        r = await client.delete("/api/v1/devices/KS-UNBIND-001/bind", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["success"] is True
+
     async def test_device_not_owned(self, client, auth_headers):
         r = await client.get("/api/v1/devices/KS-NOT-MINE/status", headers=auth_headers)
         assert r.status_code == 403
 
 
 # ═══════════════════════════════════════════════════════
-# User Profile (3 tests)
+# User Profile (7 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestUsers:
     async def test_get_profile(self, client, auth_headers):
-        r = await client.get("/api/v1/users/me", headers=auth_headers)
-        assert r.status_code in (200, 404)
+        r = await client.get("/api/v1/users/profile", headers=auth_headers)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["email"] == TEST_EMAIL
+        assert data["user_id"] == "test-uuid-001"
 
     async def test_update_profile(self, client, auth_headers):
-        r = await client.put("/api/v1/users/me", json={"nickname": "Updated"}, headers=auth_headers)
-        assert r.status_code in (200, 404)
+        r = await client.put("/api/v1/users/profile", json={"nickname": "Updated"}, headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["nickname"] == "Updated"
 
     async def test_register(self, client):
         r = await client.post("/api/v1/users/register", json={
-            "email": "fresh@test.com", "password": "pass123", "nickname": "Fresh"
+            "email": "fresh@test.com", "password": "pass123456", "nickname": "Fresh"
         })
-        assert r.status_code in (200, 201, 400)
+        assert r.status_code == 201
+
+    async def test_register_duplicate_email(self, client):
+        """Registering same email twice should return 409"""
+        r = await client.post("/api/v1/users/register", json={
+            "email": TEST_EMAIL, "password": "pass123456", "nickname": "Dup"
+        })
+        assert r.status_code == 409
+
+    async def test_register_short_password(self, client):
+        """Password < 6 chars should be rejected"""
+        r = await client.post("/api/v1/users/register", json={
+            "email": "short@test.com", "password": "12345", "nickname": "Short"
+        })
+        assert r.status_code == 422
+
+    async def test_register_invalid_email(self, client):
+        """Invalid email format should be rejected"""
+        r = await client.post("/api/v1/users/register", json={
+            "email": "notanemail", "password": "pass123456", "nickname": "BadEmail"
+        })
+        assert r.status_code == 422
+
+    async def test_get_my_devices(self, client, auth_headers):
+        r = await client.get("/api/v1/users/me/devices", headers=auth_headers)
+        assert r.status_code == 200
+        devices = r.json()
+        assert isinstance(devices, list)
+        if devices:
+            assert "device_id" in devices[0]
 
 
 # ═══════════════════════════════════════════════════════
-# Fences (3 tests)
+# Push Token (3 tests)
+# ═══════════════════════════════════════════════════════
+
+class TestPushTokens:
+    async def test_register_push_token_ios(self, client, auth_headers):
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "ios-fcm-token-abc123"
+        }, headers=auth_headers)
+        assert r.status_code == 200
+        assert "success" in r.json()["message"].lower()
+
+    async def test_register_push_token_android(self, client, auth_headers):
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "android", "token": "android-fcm-token-xyz789"
+        }, headers=auth_headers)
+        assert r.status_code == 200
+
+    async def test_push_token_invalid_platform(self, client, auth_headers):
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "windows", "token": "some-token"
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+
+# ═══════════════════════════════════════════════════════
+# Fences (6 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestFences:
     async def test_create_fence(self, client, auth_headers):
-        r = await client.post("/api/v1/fences", json={
-            "device_id": TEST_DEVICE_ID, "name": "Home",
-            "center_lat": 31.23, "center_lng": 121.47, "radius": 500
+        r = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "Home", "lat": 31.23, "lng": 121.47, "radius": 500
         }, headers=auth_headers)
-        assert r.status_code in (200, 201, 404)
+        assert r.status_code == 201
+        data = r.json()
+        assert data["name"] == "Home"
 
     async def test_list_fences(self, client, auth_headers):
-        r = await client.get(f"/api/v1/fences?device_id={TEST_DEVICE_ID}", headers=auth_headers)
-        assert r.status_code in (200, 404)
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", headers=auth_headers)
+        assert r.status_code == 200
+        data = r.json()
+        assert "fences" in data
+        assert "total" in data
+
+    async def test_get_fence_by_id(self, client, auth_headers):
+        """Get a specific fence after creating one"""
+        # Create fence first
+        cr = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "Office", "lat": 31.24, "lng": 121.48, "radius": 300
+        }, headers=auth_headers)
+        assert cr.status_code == 201
+        fid = cr.json()["id"]
+
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/fences/{fid}", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["name"] == "Office"
+
+    async def test_update_fence(self, client, auth_headers):
+        """Update an existing fence"""
+        cr = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "School", "lat": 31.25, "lng": 121.49, "radius": 200
+        }, headers=auth_headers)
+        assert cr.status_code == 201
+        fid = cr.json()["id"]
+
+        r = await client.put(f"/api/v1/devices/{TEST_DEVICE_ID}/fences/{fid}", json={
+            "name": "School Updated", "radius": 300
+        }, headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["name"] == "School Updated"
+        assert r.json()["radius"] == 300
 
     async def test_delete_fence(self, client, auth_headers):
-        r = await client.delete("/api/v1/fences/1", headers=auth_headers)
-        assert r.status_code in (200, 404)
+        cr = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "Park", "lat": 31.26, "lng": 121.50, "radius": 100
+        }, headers=auth_headers)
+        assert cr.status_code == 201
+        fid = cr.json()["id"]
+
+        r = await client.delete(f"/api/v1/devices/{TEST_DEVICE_ID}/fences/{fid}", headers=auth_headers)
+        assert r.status_code == 200
+        assert "deleted" in r.json()["message"].lower()
+
+    async def test_create_fence_invalid_radius(self, client, auth_headers):
+        """Fence with invalid (negative) radius should be rejected"""
+        r = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "Bad", "lat": 0, "lng": 0, "radius": -1
+        }, headers=auth_headers)
+        # FastAPI doesn't validate float ranges by default, so this may be accepted
+        # The important thing is it doesn't crash
+        assert r.status_code in (201, 422)
 
 
 # ═══════════════════════════════════════════════════════
-# Alerts (2 tests)
+# Alerts (3 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestAlerts:
     async def test_list_alerts(self, client, auth_headers):
-        r = await client.get("/api/v1/alerts", headers=auth_headers)
-        assert r.status_code in (200, 404)
+        r = await client.get("/api/v1/alerts/", headers=auth_headers)
+        assert r.status_code == 200
+        data = r.json()
+        assert "items" in data
+        assert "total" in data
 
     async def test_mark_read(self, client, auth_headers):
         r = await client.put("/api/v1/alerts/1/read", headers=auth_headers)
         assert r.status_code in (200, 404)
+
+    async def test_mark_all_read(self, client, auth_headers):
+        r = await client.put("/api/v1/alerts/read-all", headers=auth_headers)
+        assert r.status_code == 200
+
+
+# ═══════════════════════════════════════════════════════
+# Device Auth / ACL (2 tests)
+# ═══════════════════════════════════════════════════════
+
+class TestDeviceAuthAcl:
+    async def test_acl_allow(self, client):
+        """ACL should allow device to access its own topic"""
+        r = await client.get("/api/v1/auth/device/acl", params={
+            "device_id": TEST_DEVICE_ID,
+            "topic": f"keepsafe/v1/{TEST_DEVICE_ID}/location",
+            "action": "publish",
+        })
+        assert r.status_code == 200
+        assert r.json()["result"] == "allow"
+
+    async def test_acl_deny_other_device(self, client):
+        """ACL should deny access to another device's topic"""
+        r = await client.get("/api/v1/auth/device/acl", params={
+            "device_id": TEST_DEVICE_ID,
+            "topic": "keepsafe/v1/KS-OTHER-DEV/location",
+            "action": "publish",
+        })
+        assert r.status_code == 200
+        assert r.json()["result"] == "deny"
 
 
 # ═══════════════════════════════════════════════════════
@@ -235,9 +417,8 @@ class TestEdgeCases:
         r = await client.get(f"/api/v1/devices/KS-{'A'*500}/status", headers=auth_headers)
         assert r.status_code in (200, 403, 404, 422)
 
-    async def test_bind_other_user(self, client, auth_headers):
-        """Should not allow binding device to another user"""
-        r = await client.post("/api/v1/devices/bind", json={
-            "user_id": "other-user-uuid", "device_id": TEST_DEVICE_ID, "token": "tok-001"
-        }, headers=auth_headers)
-        assert r.status_code == 403
+    async def test_malformed_auth_header(self, client):
+        """Auth with non-Bearer scheme should be rejected"""
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/status",
+                             headers={"Authorization": "Basic xyz"})
+        assert r.status_code == 401

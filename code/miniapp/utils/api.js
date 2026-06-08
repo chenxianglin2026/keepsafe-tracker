@@ -96,15 +96,17 @@ api.getDeviceList = () => api.get('/users/me/devices')
 
 /**
  * 绑定新设备
- * @param {string} bindingCode - 设备绑定码（设备端生成的绑定凭证）
+ * @param {string} bindingCode - 设备绑定码（设备 ID）
+ * @param {string} deviceToken - 设备密钥/令牌
  * @param {string} nickname - 设备昵称（可选）
  * @returns {Promise}
  */
-api.bindDevice = (bindingCode, nickname) => {
+api.bindDevice = (bindingCode, deviceToken, nickname) => {
   const app = getApp()
   const userId = app.globalData.userInfo?.user_id || ''
   return api.post('/devices/bind', {
     device_id: bindingCode,
+    token: deviceToken,
     user_id: userId,
     ...(nickname ? { nickname } : {})
   })

@@ -2,7 +2,7 @@
 <view class="device-card" bindtap="onTap">
   <view class="device-header">
     <view class="device-info">
-      <text class="device-name">{{device.name || '未命名设备'}}</text>
+      <text class="device-name">{{device.nickname || device.name || '未命名设备'}}</text>
       <view class="device-id-row">
         <text class="device-id-label">设备ID: </text>
         <text class="device-id">{{device.device_id || '--'}}</text>

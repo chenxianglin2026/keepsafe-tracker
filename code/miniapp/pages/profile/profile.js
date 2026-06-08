@@ -14,6 +14,7 @@ Page({
     // 绑定弹窗
     bindVisible: false,
     bindDeviceId: '',
+    bindDeviceToken: '',
     bindDeviceName: ''
   },
 
@@ -96,7 +97,9 @@ Page({
 
   onLocateDevice(e) {
     const device = e.detail.device
-    if (device && device.latitude && device.longitude) {
+    const lat = device.latitude || device.lat
+    const lng = device.longitude || device.lng
+    if (device && lat && lng) {
       wx.switchTab({
         url: '/pages/index/index'
       })
@@ -184,6 +187,7 @@ Page({
     this.setData({
       bindVisible: true,
       bindDeviceId: '',
+      bindDeviceToken: '',
       bindDeviceName: ''
     })
   },
@@ -196,20 +200,28 @@ Page({
     this.setData({ bindDeviceId: e.detail.value })
   },
 
+  onBindTokenInput(e) {
+    this.setData({ bindDeviceToken: e.detail.value })
+  },
+
   onBindNameInput(e) {
     this.setData({ bindDeviceName: e.detail.value })
   },
 
   onBindConfirm() {
-    const { bindDeviceId, bindDeviceName } = this.data
+    const { bindDeviceId, bindDeviceToken, bindDeviceName } = this.data
     if (!bindDeviceId.trim()) {
       wx.showToast({ title: '请输入设备码', icon: 'none' })
+      return
+    }
+    if (!bindDeviceToken.trim()) {
+      wx.showToast({ title: '请输入设备密钥', icon: 'none' })
       return
     }
 
     wx.showLoading({ title: '绑定中...', mask: true })
 
-    api.bindDevice(bindDeviceId.trim(), bindDeviceName.trim() || undefined)
+    api.bindDevice(bindDeviceId.trim(), bindDeviceToken.trim(), bindDeviceName.trim() || undefined)
       .then(() => {
         wx.hideLoading()
         wx.showToast({ title: '绑定成功', icon: 'success' })

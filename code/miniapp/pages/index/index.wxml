@@ -105,15 +105,23 @@
         <text class="bind-close" bindtap="onBindClose">✕</text>
       </view>
       <view class="bind-body">
-        <text class="bind-desc">请输入设备背面的 6 位设备码</text>
+        <text class="bind-desc">请输入设备码和设备密钥</text>
         <input
           class="input-field bind-input"
-          placeholder="输入设备码"
+          placeholder="设备 ID（如 KS-00000001）"
           placeholder-class="input-placeholder"
           value="{{bindDeviceId}}"
           bindinput="onBindInput"
-          maxlength="6"
+          maxlength="16"
           focus="{{true}}"
+        />
+        <input
+          class="input-field bind-input"
+          placeholder="设备密钥"
+          placeholder-class="input-placeholder"
+          value="{{bindDeviceToken}}"
+          bindinput="onBindTokenInput"
+          maxlength="64"
         />
         <input
           class="input-field bind-name-input"

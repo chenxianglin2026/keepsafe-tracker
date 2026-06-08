@@ -1,9 +1,10 @@
 # KeepSafe EC618 固件迁移准备
 
 > 文档类型: 固件迁移清单 + 操作指南
-> 日期: 2026-06-06 (更新)
+> 日期: 2026-06-08 (更新)
 > 当前固件: ESP32-S3 (ESP-IDF) + Air780E 外挂 Modem
 > 目标平台: EC618 内核 (合宙 Air780EG 模组, LuatOS 方案)
+> 状态: 准备阶段 — Air780EG 开发板已到货，待 SIM 卡到位后开始验证
 
 ---
 
@@ -20,7 +21,7 @@
 
 ---
 
-## 一、现有固件代码清单 (18 文件)
+## 一、现有固件代码清单 (16 文件)
 
 代码位置: `code/firmware/main/`
 
@@ -42,8 +43,6 @@
 | 14 | sos.h | 145 | 4.2KB | SOS 事件结构 + 电池结构 + 接口 |
 | 15 | led.c | 221 | 6.5KB | LED PWM 驱动 (蓝/绿/红, 脉冲省电) |
 | 16 | led.h | 99 | 2.4KB | LED 模式定义 + 接口 |
-| 17 | wifi_mqtt.c | 49 | 2.0KB | WiFi MQTT 直连 (ESP-IDF mqtt_client, 开发调试用) |
-| 18 | wifi_mqtt.h | 7 | 0.2KB | WiFi MQTT 接口 |
 
 ---
 
@@ -76,8 +75,6 @@
 | 14 | sos.h | **LOW** | 枚举和结构定义可直接复用。 |
 | 15 | led.c | **HIGH** | 完全依赖 ESP-IDF LEDC PWM 外设 (driver/ledc.h)。EC618 的 PWM 机制完全不同。LED 闪烁模式逻辑可移植, 但硬件层需要重写。 |
 | 16 | led.h | **LOW** | LED 模式枚举可直接复用。 |
-| 17 | wifi_mqtt.c | **DROP** | ESP32 WiFi 调试专用。EC618 没有 WiFi, 直接删除。 |
-| 18 | wifi_mqtt.h | **DROP** | 同上。 |
 
 ### 汇总
 
@@ -86,7 +83,7 @@
 | LOW | 8 | power.h, mqtt.h, gps.c, gps.h, lbs.h, sos.h, led.h, accel.h (头文件+纯逻辑) |
 | MEDIUM | 5 | main.c, config.h, power.c, lbs.c, accel.h |
 | HIGH | 5 | mqtt.c, accel.c, sos.c, led.c (硬件驱动层) |
-| DROP | 2 | wifi_mqtt.c, wifi_mqtt.h |
+| DROP | 0 | (wifi_mqtt.c/h 已删除) |
 
 ---
 

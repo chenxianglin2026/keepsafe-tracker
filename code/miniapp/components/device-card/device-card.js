@@ -34,8 +34,9 @@ Component({
       const device = this.data.device
       if (!device) return
 
-      const { status, className } = mapUtil.getDeviceStatus(device.last_report_time, device.battery)
-      const lastTime = mapUtil.formatTime(device.last_report_time)
+      const status = device.is_active ? '在线' : '离线'
+      const className = device.is_active ? 'online' : 'offline'
+      const lastTime = mapUtil.formatTime(device.last_seen)
       const batteryPercent = device.battery != null ? Math.max(0, Math.min(100, device.battery)) : 0
       const batteryColor = mapUtil.getBatteryColor(device.battery)
 
