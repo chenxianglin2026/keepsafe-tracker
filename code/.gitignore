@@ -53,3 +53,5 @@ uploads/
 
 # Docker
 # .dockerignore is committed intentionally
+hardware/keepsafe_final.stl
+hardware/3d-model/pbr/mesh_textured_pbr.obj
