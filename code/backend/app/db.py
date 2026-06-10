@@ -128,14 +128,31 @@ class Fence(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     device_id = Column(String(16), nullable=False, index=True)
     name = Column(String(128), nullable=False)
-    lat = Column(Float, nullable=False)
-    lng = Column(Float, nullable=False)
-    radius = Column(Float, nullable=False)  # meters
+    fence_type = Column(String(16), default="circle", nullable=False)  # "circle" or "polygon"
+    lat = Column(Float, nullable=True)       # center lat (nullable for polygons)
+    lng = Column(Float, nullable=True)       # center lng (nullable for polygons)
+    radius = Column(Float, nullable=True)    # meters (nullable for polygons)
+    vertices = Column(Text, nullable=True)   # JSON array of {lat,lng} for polygon fences
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class DeviceShare(Base):
+    """Track device sharing between users."""
+
+    __tablename__ = "device_shares"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    owner_user_id = Column(String(64), nullable=False, index=True)
+    shared_with_user_id = Column(String(64), nullable=False, index=True)
+    device_id = Column(String(16), nullable=False, index=True)
+    permissions = Column(String(32), default="view", nullable=False)  # "view" or "control"
+    is_active = Column(Boolean, default=True)
+    shared_at = Column(DateTime(timezone=True), server_default=func.now())
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class User(Base):

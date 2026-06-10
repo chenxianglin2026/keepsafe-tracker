@@ -230,6 +230,7 @@ from app.api.devices import router as devices_router  # noqa: E402
 from app.api.users import router as users_router  # noqa: E402
 from app.api.fences import router as fences_router  # noqa: E402
 from app.api.alerts import router as alerts_router  # noqa: E402
+from app.api.sharing import router as sharing_router  # noqa: E402
 from app.chat_agent import router as chat_router  # noqa: E402
 
 app.include_router(auth_router)
@@ -237,6 +238,7 @@ app.include_router(devices_router)
 app.include_router(users_router)
 app.include_router(fences_router)
 app.include_router(alerts_router)
+app.include_router(sharing_router)
 app.include_router(chat_router)
 
 # 全局 500 错误处理 — 开发调试用
