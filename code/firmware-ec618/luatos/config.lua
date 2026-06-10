@@ -37,6 +37,7 @@ CONFIG.PDP_CID  = 1
 -- Active Time (T3324): 10 seconds, TAU (T3412): 54 minutes
 CONFIG.PSM_ACTIVE_TIMER = "00001000"   -- 10s
 CONFIG.PSM_TAU_PERIOD   = "00000101"   -- 54min
+CONFIG.PSM_MIN_ACTIVE_MS = 10000        -- minimum 10s awake after wake before sleep allowed
 
 -- ======================= GPS / GNSS =======================
 CONFIG.GPS_FIX_TIMEOUT_MS = 60000      -- max wait for 3D fix

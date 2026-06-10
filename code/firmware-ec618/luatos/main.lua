@@ -23,6 +23,7 @@
 local CONFIG = require("config")
 local GPS    = require("gps")
 local MQTT   = require("mqtt")
+local PSM    = require("psm")
 
 -- ======================= State Machine =======================
 
@@ -56,6 +57,7 @@ local heartbeat_timer = nil
 local sos_repeat_timer = nil
 local net_check_timer = nil
 local mqtt_tick_timer = nil
+local psm_tick_timer = nil
 
 -- ======================= Network Monitoring =======================
 
@@ -181,6 +183,8 @@ end
 
 local function on_mqtt_connected()
     log.info("KEEPSAFE", "MQTT connected callback: starting reporting")
+    -- Clear PSM sleep guard for MQTT
+    PSM.clear_guard("mqtt_publishing")
     -- Start/re-start periodic reporting
     start_reporting()
 end
@@ -192,6 +196,7 @@ end
 
 local function on_network_down()
     log.warn("KEEPSAFE", "Network down callback: pausing all operations")
+    PSM.set_guard("network_recovery")
     stop_reporting()
 end
 
@@ -350,8 +355,11 @@ local function main_loop()
     MQTT.connect()
 
     -- 4. Configure PSM for power saving
-    log.info("KEEPSAFE", "Configuring PSM...")
-    MQTT.configure_psm()
+    log.info("KEEPSAFE", "Initializing PSM power saving...")
+    local psm_ok = PSM.init()
+    if not psm_ok then
+        log.warn("KEEPSAFE", "PSM not available, falling back to eDRX + slow clock")
+    end
 
     -- 5. Start MQTT tick timer (health check watchdog)
     mqtt_tick_timer = sys.timerStart(function()
@@ -363,7 +371,17 @@ local function main_loop()
         net_monitor_tick()
     end, CONFIG.NET_CHECK_INTERVAL_MS, true)
 
-    -- 7. Enter main state machine loop
+    -- 7. Start PSM tick timer (manage sleep/wake cycles)
+    psm_tick_timer = sys.timerStart(function()
+        PSM.tick()
+        -- Dynamic timer adjustment based on battery and motion
+        if battery_pct then
+            local moving = (current_state == STATE.MOVING)
+            PSM.adjust_timers(battery_pct, moving)
+        end
+    end, 30000, true)  -- every 30 seconds
+
+    -- 8. Enter main state machine loop
     log.info("KEEPSAFE", "Entering state machine loop")
     local last_watchdog = os.time()
 
@@ -394,6 +412,14 @@ function trigger_sos()
 
     log.warn("SOS", "SOS triggered! Entering SOS_ACTIVE state")
     current_state = STATE.SOS_ACTIVE
+
+    -- Block PSM sleep during SOS
+    PSM.set_guard("sos_active")
+
+    -- Wake from PSM if sleeping
+    if PSM.is_sleeping() then
+        PSM.wake_from_sleep("gpio")
+    end
 
     -- Poll GPS for immediate location
     GPS.poll()
@@ -427,6 +453,9 @@ function cancel_sos()
 
     log.info("SOS", "Cancelling SOS mode")
     current_state = STATE.STATIONARY
+
+    -- Clear PSM SOS guard
+    PSM.clear_guard("sos_active")
 
     if sos_repeat_timer then
         sys.timerStop(sos_repeat_timer)

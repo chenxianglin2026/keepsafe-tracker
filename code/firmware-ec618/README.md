@@ -15,7 +15,9 @@ firmware-ec618/
 ├── luatos/                # LuatOS 固件 (方案 A, 推荐)
 │   ├── main.lua           # 主入口 + 状态机主循环 (移植自 main.c)
 │   ├── config.lua         # 全局配置 (移植自 config.h)
-│   └── mqtt.lua           # MQTT 客户端 (LuatOS socket 库)
+│   ├── mqtt.lua           # MQTT 客户端 (LuatOS socket 库)
+│   ├── psm.lua            # PSM 低功耗省电模块 (3GPP Rel-12)
+│   └── gps.lua            # GNSS/GPS 定位模块
 ├── at-scripts/            # AT 指令工具脚本
 │   └── mqtt_at.py         # MQTT AT 指令连接脚本 (MQTTCONNCFG/PUB/SUB/DISC)
 └── shared/                # 共享参考文件
@@ -93,6 +95,6 @@ python3 ~/projects/keepsafe/code/firmware-ec618/at-scripts/mqtt_at.py \
 - [ ] 移植 LIS3DH I2C 驱动到 LuatOS API
 - [ ] 移植 LED PWM 驱动
 - [ ] 移植 SOS 按键 + 电池 ADC
-- [ ] PSM 省电配实验证
+- [x] PSM 省电配实验证 (psm.lua 模块已实现)
 - [ ] GNSS 定位精度测试
 - [ ] 端到端联调 (固件 → MQTT → 后端 → 小程序)

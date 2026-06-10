@@ -1,7 +1,8 @@
 """
 KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
-MQTT message formats, fence alerts, offline reporting (58 tests)
+MQTT message formats, fence alerts, offline reporting, bind/unbind,
+push token management (67 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -132,7 +133,7 @@ class TestAuth:
 
 
 # ═══════════════════════════════════════════════════════
-# Devices (11 tests)
+# Devices (14 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestDevices:
@@ -189,6 +190,14 @@ class TestDevices:
         }, headers=auth_headers)
         assert r.status_code == 403
 
+    async def test_bind_no_auth(self, client):
+        """Bind without auth header should be rejected"""
+        r = await client.post("/api/v1/devices/bind", json={
+            "user_id": "test-uuid-001", "device_id": "KS-NO-AUTH",
+            "token": "tok-noauth"
+        })
+        assert r.status_code == 401
+
     async def test_unbind_device(self, client, auth_headers):
         """Unbind a previously bound device (use separate device, don't break main test device)"""
         # Bind a fresh device first, then unbind it
@@ -201,9 +210,24 @@ class TestDevices:
         assert r.status_code == 200
         assert r.json()["success"] is True
 
+    async def test_unbind_non_existent_device(self, client, auth_headers):
+        """Unbind a device that was never bound should return 403 (not owned)"""
+        r = await client.delete("/api/v1/devices/KS-NEVER-BOUND/bind", headers=auth_headers)
+        assert r.status_code == 403
+
     async def test_device_not_owned(self, client, auth_headers):
         r = await client.get("/api/v1/devices/KS-NOT-MINE/status", headers=auth_headers)
         assert r.status_code == 403
+
+    async def test_bind_long_nickname(self, client, auth_headers):
+        """Bind with a very long nickname should still succeed or be truncated"""
+        long_name = "N" * 200
+        r = await client.post("/api/v1/devices/bind", json={
+            "user_id": "test-uuid-001", "device_id": "KS-LONGNAME",
+            "token": "tok-longname", "nickname": long_name
+        }, headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["success"] is True
 
 
 # ═══════════════════════════════════════════════════════
@@ -260,7 +284,7 @@ class TestUsers:
 
 
 # ═══════════════════════════════════════════════════════
-# Push Token (3 tests)
+# Push Token (7 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestPushTokens:
@@ -280,6 +304,39 @@ class TestPushTokens:
     async def test_push_token_invalid_platform(self, client, auth_headers):
         r = await client.post("/api/v1/users/me/push-token", json={
             "platform": "windows", "token": "some-token"
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+    async def test_push_token_empty(self, client, auth_headers):
+        """Empty token string should be rejected"""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": ""
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+    async def test_push_token_no_auth(self, client):
+        """Push token registration without auth should be rejected"""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "some-token"
+        })
+        assert r.status_code == 401
+
+    async def test_push_token_update_existing(self, client, auth_headers):
+        """Register then update the same platform token — upsert behavior"""
+        r1 = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "android", "token": "android-token-v1"
+        }, headers=auth_headers)
+        assert r1.status_code == 200
+
+        r2 = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "android", "token": "android-token-v2"
+        }, headers=auth_headers)
+        assert r2.status_code == 200
+
+    async def test_push_token_whitespace_only(self, client, auth_headers):
+        """Whitespace-only token should be rejected"""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "   "
         }, headers=auth_headers)
         assert r.status_code == 400
 
