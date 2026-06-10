@@ -133,6 +133,9 @@ class DeviceOut(BaseModel):
     bound_at: datetime
     is_active: bool
     last_seen: Optional[datetime] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    battery: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -274,6 +277,24 @@ async def get_my_devices(
 
     devices = []
     for ud, d in rows:
+        # Try to enrich with latest location and battery from Redis
+        lat = None
+        lng = None
+        battery = None
+        try:
+            from app.redis_cache import get_latest_location, get_device_status as redis_status
+            loc = await get_latest_location(ud.device_id)
+            if loc:
+                lat = loc.get("lat")
+                lng = loc.get("lng")
+                battery = loc.get("bat")  # EC618 uses "bat"
+            if battery is None:
+                st = await redis_status(ud.device_id)
+                if st:
+                    battery = st.get("battery") or st.get("bat")
+        except Exception:
+            pass  # Redis may be unavailable; skip enrichment
+
         devices.append(
             DeviceOut(
                 device_id=ud.device_id,
@@ -281,6 +302,9 @@ async def get_my_devices(
                 bound_at=ud.bound_at,
                 is_active=d.is_active,
                 last_seen=d.last_seen,
+                lat=lat,
+                lng=lng,
+                battery=battery,
             )
         )
     return devices

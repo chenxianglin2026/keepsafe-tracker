@@ -57,12 +57,15 @@ Component({
     updateDistance() {
       const device = this.data.device
       const userLoc = this.data.userLocation
-      if (!device || !device.latitude || !device.longitude || !userLoc) {
+      if (!device || !userLoc) {
         return
       }
+      const lat = device.lat || device.latitude
+      const lng = device.lng || device.longitude
+      if (!lat || !lng) return
       const dist = mapUtil.calcDistance(
         userLoc.latitude, userLoc.longitude,
-        device.latitude, device.longitude
+        lat, lng
       )
       this.setData({
         distance: mapUtil.formatDistance(dist)
