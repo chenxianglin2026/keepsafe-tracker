@@ -140,13 +140,19 @@ class MQTTClient:
         data = _normalize_ec618_payload(data)
 
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
+        lat = data.get("lat")
+        lng = data.get("lng")
 
-        # 1. Update Redis cache immediately
+        # ── Dedup: skip DB insert if same position within 30s ──
+        from app.redis_cache import get_redis
+        r = await get_redis()
+
+        # Always update Redis cache (even on dedup skip)
         loc_cache = {
             "device_id": device_id,
             "ts": ts.isoformat(),
-            "lat": data.get("lat"),
-            "lng": data.get("lng"),
+            "lat": lat,
+            "lng": lng,
             "alt": data.get("alt"),
             "speed": data.get("speed"),
             "heading": data.get("heading"),
@@ -161,66 +167,77 @@ class MQTTClient:
         }
         await set_latest_location(device_id, loc_cache)
 
-        # 2. Update device status in Redis
         status = {
             "device_id": device_id,
             "battery": data.get("battery"),
             "charging": data.get("charging"),
             "rssi": data.get("rssi"),
-            "lat": data.get("lat"),
-            "lng": data.get("lng"),
+            "lat": lat,
+            "lng": lng,
             "last_seen": ts.isoformat(),
         }
         await set_device_status(device_id, status)
 
-        # 3. Write to TimescaleDB
-        async with async_session_factory() as session:
-            await session.execute(
-                """
-                INSERT INTO locations
-                    (device_id, ts, lat, lng, alt, speed, heading, accuracy,
-                     satellites, fix_type, cell_id, battery, charging, rssi, fw_version)
-                VALUES
-                    (:device_id, :ts, :lat, :lng, :alt, :speed, :heading, :accuracy,
-                     :satellites, :fix_type, :cell_id, :battery, :charging, :rssi, :fw_version)
-                """,
-                {
-                    "device_id": device_id,
-                    "ts": ts,
-                    "lat": data.get("lat"),
-                    "lng": data.get("lng"),
-                    "alt": data.get("alt"),
-                    "speed": data.get("speed"),
-                    "heading": data.get("heading"),
-                    "accuracy": data.get("accuracy"),
-                    "satellites": data.get("satellites"),
-                    "fix_type": data.get("fix_type"),
-                    "cell_id": data.get("cell_id"),
-                    "battery": data.get("battery"),
-                    "charging": data.get("charging"),
-                    "rssi": data.get("rssi"),
-                    "fw_version": data.get("fw_version"),
-                },
-            )
+        should_insert_db = True
+        if lat is not None and lng is not None:
+            dedup_key = f"loc_dedup:{device_id}"
+            # Round coordinates to ~10m precision for fuzzy matching
+            rounded_coords = f"{round(lat, 4)},{round(lng, 4)}"
+            cached_coords = await r.get(dedup_key)
+            if cached_coords == rounded_coords:
+                # Same position within dedup window — skip DB insert
+                logger.debug("Location dedup: skipping DB insert for %s at %s", device_id, rounded_coords)
+                should_insert_db = False
+            else:
+                await r.set(dedup_key, rounded_coords, ex=30)  # 30s dedup window
 
-            # Update device last_seen
-            await session.execute(
-                """
-                INSERT INTO devices (device_id, device_token, fw_version, last_seen, is_active)
-                VALUES (:device_id, '', :fw_version, :last_seen, TRUE)
-                ON CONFLICT (device_id)
-                DO UPDATE SET last_seen = :last_seen,
-                              fw_version = COALESCE(:fw_version, devices.fw_version),
-                              is_active = TRUE
-                """,
-                {
-                    "device_id": device_id,
-                    "fw_version": data.get("fw_version"),
-                    "last_seen": ts,
-                },
-            )
+        if should_insert_db:
+            async with async_session_factory() as session:
+                await session.execute(
+                    """
+                    INSERT INTO locations
+                        (device_id, ts, lat, lng, alt, speed, heading, accuracy,
+                         satellites, fix_type, cell_id, battery, charging, rssi, fw_version)
+                    VALUES
+                        (:device_id, :ts, :lat, :lng, :alt, :speed, :heading, :accuracy,
+                         :satellites, :fix_type, :cell_id, :battery, :charging, :rssi, :fw_version)
+                    """,
+                    {
+                        "device_id": device_id,
+                        "ts": ts,
+                        "lat": lat,
+                        "lng": lng,
+                        "alt": data.get("alt"),
+                        "speed": data.get("speed"),
+                        "heading": data.get("heading"),
+                        "accuracy": data.get("accuracy"),
+                        "satellites": data.get("satellites"),
+                        "fix_type": data.get("fix_type"),
+                        "cell_id": data.get("cell_id"),
+                        "battery": data.get("battery"),
+                        "charging": data.get("charging"),
+                        "rssi": data.get("rssi"),
+                        "fw_version": data.get("fw_version"),
+                    },
+                )
 
-            await session.commit()
+                # Update device last_seen
+                await session.execute(
+                    """
+                    INSERT INTO devices (device_id, device_token, fw_version, last_seen, is_active)
+                    VALUES (:device_id, '', :fw_version, :last_seen, TRUE)
+                    ON CONFLICT (device_id)
+                    DO UPDATE SET last_seen = :last_seen,
+                                  fw_version = COALESCE(:fw_version, devices.fw_version),
+                                  is_active = TRUE
+                    """,
+                    {
+                        "device_id": device_id,
+                        "fw_version": data.get("fw_version"),
+                        "last_seen": ts,
+                    },
+                )
+                await session.commit()
 
         # 4. Resolve LBS position if cell_id is present and fix is poor (no GPS fix)
         cell_id = data.get("cell_id")
@@ -340,25 +357,28 @@ class MQTTClient:
             async with async_session_factory() as session:
                 result = await session.execute(
                     """
-                    SELECT ud.nickname, d.device_token
+                    SELECT ud.user_id, ud.nickname, upt.platform, upt.token
                     FROM user_devices ud
-                    JOIN devices d ON d.device_id = ud.device_id
+                    JOIN user_push_tokens upt ON upt.user_id = ud.user_id
                     WHERE ud.device_id = :device_id AND ud.is_bound = TRUE
-                    LIMIT 1
                     """,
                     {"device_id": device_id},
                 )
-                row = result.fetchone()
+                push_rows = result.fetchall()
 
-            if row:
-                nickname = row[0] or device_id
-                await send_geofence_push(
-                    device_token=device_id,  # placeholder
-                    platform="android",
-                    fence_name=fence.name,
-                    event=event,
-                    device_name=nickname,
-                )
+            if push_rows:
+                for row in push_rows:
+                    nickname = row[1] or device_id
+                    platform = row[2] or "android"
+                    push_token = row[3]
+                    if push_token:
+                        await send_geofence_push(
+                            device_token=push_token,
+                            platform=platform,
+                            fence_name=fence.name,
+                            event=event,
+                            device_name=nickname,
+                        )
         except Exception as exc:
             logger.error("Geofence push notification failed: %s", exc)
 
@@ -401,6 +421,15 @@ class MQTTClient:
 
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
+        # ── Dedup: throttle SOS alerts to one per 5 minutes per device ──
+        from app.redis_cache import get_redis
+        r = await get_redis()
+        throttle_key = f"sos_throttle:{device_id}"
+        if await r.exists(throttle_key):
+            logger.info("SOS dedup: throttled for %s", device_id)
+            return
+        await r.set(throttle_key, "1", ex=300)  # 5 minutes
+
         # Insert into sos_events
         async with async_session_factory() as session:
             await session.execute(
@@ -442,31 +471,34 @@ class MQTTClient:
         try:
             from app.push import send_sos_push
 
-            # Look up bound users for push
+            # Look up bound users and their registered push tokens
             async with async_session_factory() as session:
                 result = await session.execute(
                     """
-                    SELECT ud.user_id, ud.nickname, d.device_token
+                    SELECT ud.user_id, ud.nickname, upt.platform, upt.token
                     FROM user_devices ud
-                    JOIN devices d ON d.device_id = ud.device_id
+                    JOIN user_push_tokens upt ON upt.user_id = ud.user_id
                     WHERE ud.device_id = :device_id AND ud.is_bound = TRUE
                     """,
                     {"device_id": device_id},
                 )
-                bindings = result.fetchall()
+                push_rows = result.fetchall()
 
-            if bindings:
-                for row in bindings:
-                    _ = row[0]  # user_id (reserved for push notification routing)
+            if push_rows:
+                for row in push_rows:
+                    user_id = row[0]
                     nickname = row[1] or f"设备 {device_id}"
-                    # NOTE: device_token here should be the user's push token,
-                    # not the device's MQTT token. In production, store push tokens
-                    # in a separate user_push_tokens table. Here we approximate.
-                    await send_sos_push(
-                        device_token=device_id,  # placeholder
-                        platform="android",
-                        device_name=nickname,
-                    )
+                    platform = row[2] or "android"
+                    push_token = row[3]
+                    if push_token:
+                        await send_sos_push(
+                            device_token=push_token,
+                            platform=platform,
+                            device_name=nickname,
+                        )
+            else:
+                # Fallback: no registered push tokens, log warning
+                logger.warning("SOS: no push tokens found for device %s", device_id)
         except Exception as exc:
             logger.error("SOS push notification failed: %s", exc)
 
@@ -475,6 +507,16 @@ class MQTTClient:
         data = _normalize_ec618_payload(data)
 
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
+        battery = data.get("battery", 0)
+
+        # ── Dedup: throttle low battery alerts to one per 30 minutes per device ──
+        from app.redis_cache import get_redis
+        r = await get_redis()
+        throttle_key = f"low_battery_explicit_throttle:{device_id}"
+        if await r.exists(throttle_key):
+            logger.info("Low battery dedup: throttled for %s", device_id)
+            return
+        await r.set(throttle_key, "1", ex=1800)  # 30 minutes
 
         async with async_session_factory() as session:
             await session.execute(
@@ -490,33 +532,39 @@ class MQTTClient:
             )
             await session.commit()
 
-        logger.info("Low battery alert from %s: %d%%", device_id, data.get("battery", 0))
+        logger.info("Low battery alert from %s: %d%%", device_id, battery)
 
         # Push notification
         try:
             from app.push import send_low_battery_push
 
+            # Look up bound users and their registered push tokens
             async with async_session_factory() as session:
                 result = await session.execute(
                     """
-                    SELECT ud.nickname, d.device_token
+                    SELECT ud.user_id, ud.nickname, upt.platform, upt.token
                     FROM user_devices ud
-                    JOIN devices d ON d.device_id = ud.device_id
+                    JOIN user_push_tokens upt ON upt.user_id = ud.user_id
                     WHERE ud.device_id = :device_id AND ud.is_bound = TRUE
-                    LIMIT 1
                     """,
                     {"device_id": device_id},
                 )
-                row = result.fetchone()
+                push_rows = result.fetchall()
 
-            if row:
-                nickname = row[0] or f"设备 {device_id}"
-                await send_low_battery_push(
-                    device_token=device_id,  # placeholder
-                    platform="android",
-                    battery=data.get("battery", 0),
-                    device_name=nickname,
-                )
+            if push_rows:
+                for row in push_rows:
+                    nickname = row[1] or f"设备 {device_id}"
+                    platform = row[2] or "android"
+                    push_token = row[3]
+                    if push_token:
+                        await send_low_battery_push(
+                            device_token=push_token,
+                            platform=platform,
+                            battery=battery,
+                            device_name=nickname,
+                        )
+            else:
+                logger.warning("Low battery: no push tokens found for device %s", device_id)
         except Exception as exc:
             logger.error("Low battery push failed: %s", exc)
 

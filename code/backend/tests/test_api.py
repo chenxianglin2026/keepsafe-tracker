@@ -2,7 +2,7 @@
 KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
 MQTT message formats, fence alerts, offline reporting, bind/unbind,
-push token management (67 tests)
+push token management, API auth enforcement (79 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -130,6 +130,64 @@ class TestAuth:
         })
         assert r.status_code == 200
         assert r.json()["result"] == "deny"
+
+
+# ═══════════════════════════════════════════════════════
+# API Authorization — Unauthorized Access (12 tests)
+# ═══════════════════════════════════════════════════════
+
+class TestAPIAuthRequired:
+    """Verify every protected endpoint rejects requests without auth token."""
+
+    async def test_noauth_device_location(self, client):
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/location")
+        assert r.status_code == 401
+
+    async def test_noauth_device_history(self, client):
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/history")
+        assert r.status_code == 401
+
+    async def test_noauth_device_sos(self, client):
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/sos/events")
+        assert r.status_code == 401
+
+    async def test_noauth_unbind_device(self, client):
+        r = await client.delete(f"/api/v1/devices/{TEST_DEVICE_ID}/bind")
+        assert r.status_code == 401
+
+    async def test_noauth_user_profile_get(self, client):
+        r = await client.get("/api/v1/users/profile")
+        assert r.status_code == 401
+
+    async def test_noauth_user_profile_put(self, client):
+        r = await client.put("/api/v1/users/profile", json={"nickname": "hacker"})
+        assert r.status_code == 401
+
+    async def test_noauth_user_devices_get(self, client):
+        r = await client.get("/api/v1/users/me/devices")
+        assert r.status_code == 401
+
+    async def test_noauth_fence_list(self, client):
+        r = await client.get(f"/api/v1/devices/{TEST_DEVICE_ID}/fences")
+        assert r.status_code == 401
+
+    async def test_noauth_fence_create(self, client):
+        r = await client.post(f"/api/v1/devices/{TEST_DEVICE_ID}/fences", json={
+            "name": "Bad", "lat": 0, "lng": 0, "radius": 100
+        })
+        assert r.status_code == 401
+
+    async def test_noauth_alerts_list(self, client):
+        r = await client.get("/api/v1/alerts/")
+        assert r.status_code == 401
+
+    async def test_noauth_alerts_mark_read(self, client):
+        r = await client.put("/api/v1/alerts/1/read")
+        assert r.status_code == 401
+
+    async def test_noauth_alerts_read_all(self, client):
+        r = await client.put("/api/v1/alerts/read-all")
+        assert r.status_code == 401
 
 
 # ═══════════════════════════════════════════════════════
