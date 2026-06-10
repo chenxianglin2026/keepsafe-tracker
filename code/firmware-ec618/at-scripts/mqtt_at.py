@@ -749,14 +749,19 @@ def run_mqtt_flow(session) -> bool:
     """
     Execute the complete MQTT connection flow with retry:
     1. Verify AT communication
-    2. Check SIM & network registration
-    3. Set up PDP context
-    4. Configure PSM
-    5. Configure MQTT parameters (MQTTCONNCFG)
-    6. Connect to broker (MQTTCONN)
-    7. Publish test messages (location, heartbeat)
-    8. Subscribe to downlink topic
-    9. Disconnect (MQTTDISC)
+    2. Check firmware type
+    3. Check SIM
+    4. Signal strength
+    5. Network registration
+    6. APN Configuration (AT+CGDCONT) — China Telecom ctnet
+    7. PDP Activation (AT+CGACT) + IP acquisition
+    8. Configure PSM
+    9. Configure MQTT parameters (MQTTCONNCFG)
+    10. Connect to broker (MQTTCONN)
+    11. Publish test messages (location, heartbeat, SOS)
+    12. Subscribe to downlink topic
+    13. Check downlink messages
+    14. Disconnect (MQTTDISC)
     """
     print("\n" + "=" * 60)
     print("  KeepSafe MQTT AT Command Flow")
@@ -793,28 +798,50 @@ def run_mqtt_flow(session) -> bool:
     if not retry_with_backoff(session.at_network_reg, "NETWORK"):
         print("[WARN] Network not registered. Continuing anyway...")
 
-    # Step 6: PDP context + activation
-    print("\n--- Step 6: PDP Setup ---")
-    if not retry_with_backoff(session.at_pdp_setup, "PDP"):
+    # Step 6: APN Configuration (AT+CGDCONT)
+    print("\n--- Step 6: APN Configuration (AT+CGDCONT) ---")
+    print(f"  Setting APN: {APN_NAME} (China Telecom ctnet)")
+    ok, resp = session.send_at(f'AT+CGDCONT={PDP_CID},"IP","{APN_NAME}"')
+    if not ok:
+        print(f"[FAIL] AT+CGDCONT failed: {resp}")
+        print("       This step is critical for LTE data connectivity.")
+        print("       Verify: APN name (ctnet for China Telecom), PDP CID (usually 1).")
+        return False
+    print(f"  AT+CGDCONT OK: PDP context type IP defined for CID {PDP_CID}")
+
+    # Step 7: PDP Activation (AT+CGACT) + IP Acquisition
+    print("\n--- Step 7: PDP Activation (AT+CGACT) ---")
+    ok, resp = session.send_at(f"AT+CGACT=1,{PDP_CID}")
+    if not ok:
+        print(f"[FAIL] AT+CGACT failed: {resp}")
         return False
 
-    # Step 7: PSM configuration (optional)
-    print("\n--- Step 7: PSM Configuration ---")
+    ok, resp = session.send_at(f"AT+CGPADDR={PDP_CID}")
+    ip_match = re.search(r'\+CGPADDR:\s*\d+,\s*"?([\d.]+)"?', resp)
+    if ip_match:
+        ip = ip_match.group(1)
+        print(f"  Got IP: {ip}")
+    else:
+        print("[WARN] No IP address obtained from PDP activation")
+        return False
+
+    # Step 8: PSM configuration (optional)
+    print("\n--- Step 8: PSM Configuration ---")
     retry_with_backoff(session.at_psm_configure, "PSM", fatal=False)
 
-    # Step 8: MQTT CONNCFG
-    print("\n--- Step 8: MQTT Config (MQTTCONNCFG) ---")
+    # Step 9: MQTT CONNCFG
+    print("\n--- Step 9: MQTT Config (MQTTCONNCFG) ---")
     if not retry_with_backoff(mqtt.configure, "MQTT_CFG"):
         return False
 
-    # Step 9: MQTT CONN
-    print("\n--- Step 9: MQTT Connect (MQTTCONN) ---")
+    # Step 10: MQTT CONN
+    print("\n--- Step 10: MQTT Connect (MQTTCONN) ---")
     if not mqtt.connect():
         print("[FAIL] MQTT connection failed after all retries. Check broker availability.")
         return False
 
-    # Step 10: Publish test messages
-    print("\n--- Step 10: Publish Test Messages ---")
+    # Step 11: Publish test messages
+    print("\n--- Step 11: Publish Test Messages ---")
 
     # Location report (with GPS poll if available)
     print("Polling GPS...")
@@ -875,18 +902,18 @@ def run_mqtt_flow(session) -> bool:
     })
     mqtt.publish(TOPIC_SOS, sos_payload, MQTT_QOS_SOS)
 
-    # Step 11: Subscribe (for downlink)
-    print("\n--- Step 11: Subscribe Downlink ---")
+    # Step 12: Subscribe (for downlink)
+    print("\n--- Step 12: Subscribe Downlink ---")
     mqtt.subscribe(TOPIC_DOWNLINK, qos=1)
 
     time.sleep(1)
 
     # Check for downlink messages
-    print("\n--- Step 12: Check Downlink ---")
+    print("\n--- Step 13: Check Downlink ---")
     mqtt.read_downlink()
 
-    # Step 13: Disconnect
-    print("\n--- Step 13: MQTT Disconnect (MQTTDISC) ---")
+    # Step 14: Disconnect
+    print("\n--- Step 14: MQTT Disconnect (MQTTDISC) ---")
     mqtt.disconnect()
 
     print("\n" + "=" * 60)
