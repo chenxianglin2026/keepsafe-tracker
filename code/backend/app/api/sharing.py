@@ -238,6 +238,7 @@ async def revoke_share(
             DeviceShare.id == share_id,
             DeviceShare.device_id == device_id,
             DeviceShare.owner_user_id == current_user.user_id,
+            DeviceShare.is_active,
         )
     )
     result = await db.execute(stmt)

@@ -2,7 +2,7 @@
 KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
 MQTT message formats, fence alerts, offline reporting, bind/unbind,
-push token management, device sharing, polygon fences, API auth enforcement (102 tests)
+push token management, device sharing, polygon fences, API auth enforcement (103+ tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -1002,6 +1002,102 @@ class TestDeviceSharing:
         assert "devices" in data
         assert "total" in data
 
+    # ── Boundary Tests ──────────────────────────────────────
+
+    async def test_share_device_nonexistent_device_id(self, client, auth_headers):
+        """Sharing a non-existent device should fail."""
+        r = await client.post(
+            "/api/v1/devices/KS-NOTREAL/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 403  # not owner
+
+    async def test_revoke_nonexistent_share_id(self, client, auth_headers):
+        """Revoking a share with non-existent share_id returns 404."""
+        r = await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share/99999",
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    async def test_revoke_already_revoked_share(self, client, auth_headers):
+        """Revoking an already-revoked share returns 404."""
+        # Create and revoke
+        cr = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        share_id = cr.json()["id"]
+        await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share/{share_id}",
+            headers=auth_headers,
+        )
+        # Try to revoke again
+        r = await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share/{share_id}",
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    async def test_share_device_empty_email(self, client, auth_headers):
+        """Sharing with empty email should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "", "permissions": "view"},
+            headers=auth_headers,
+        )
+        assert r.status_code in (400, 404, 422)
+
+    async def test_share_device_permissions_default(self, client, auth_headers):
+        """Sharing without explicit permissions should default to 'view'."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 201
+        assert r.json()["permissions"] == "view"
+
+    async def test_list_shares_empty(self, client, auth_headers):
+        """List shares on a device with no shares should return empty list."""
+        # Use a fresh device that has no shares
+        await client.post("/api/v1/devices/bind", json={
+            "user_id": "test-uuid-001", "device_id": "KS-NOSHARES",
+            "token": "tok-noshares", "nickname": "No Shares"
+        }, headers=auth_headers)
+        r = await client.get(
+            "/api/v1/devices/KS-NOSHARES/shares",
+            headers=auth_headers,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total"] == 0
+        assert data["shares"] == []
+
+    async def test_share_after_revoke_can_recreate(self, client, auth_headers):
+        """After revoking a share, a new share to the same user recreates it."""
+        cr = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        share_id = cr.json()["id"]
+        await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share/{share_id}",
+            headers=auth_headers,
+        )
+        # Share again
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "control"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 201
+        assert r.json()["permissions"] == "control"
+        assert r.json()["is_active"] is True
+
 
 # ═══════════════════════════════════════════════════════
 # Polygon Fences (9 tests)
@@ -1178,6 +1274,121 @@ class TestPolygonFences:
         r = await client.post(
             f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
             json={"name": "Bad Type", "fence_type": "rectangle"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    # ── Polygon Boundary Tests ─────────────────────────────
+
+    async def test_create_polygon_too_many_vertices(self, client, auth_headers):
+        """Polygon with >100 vertices should be rejected."""
+        import random
+        random.seed(0)
+        many_vertices = [
+            {"lat": 31.0 + random.uniform(-1, 1), "lng": 121.0 + random.uniform(-1, 1)}
+            for _ in range(150)
+        ]
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Too Many", "fence_type": "polygon", "vertices": many_vertices},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_polygon_duplicate_consecutive_vertices(self, client, auth_headers):
+        """Polygon with duplicate consecutive vertices should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={
+                "name": "Dup Verts",
+                "fence_type": "polygon",
+                "vertices": [
+                    {"lat": 31.20, "lng": 121.40},
+                    {"lat": 31.20, "lng": 121.40},  # duplicate
+                    {"lat": 31.22, "lng": 121.44},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_update_polygon_invalid_vertices_rejected(self, client, auth_headers):
+        """Update polygon with < 3 vertices should be rejected."""
+        cr = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={
+                "name": "UpdateTest",
+                "fence_type": "polygon",
+                "vertices": [
+                    {"lat": 31.20, "lng": 121.40},
+                    {"lat": 31.22, "lng": 121.40},
+                    {"lat": 31.22, "lng": 121.44},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert cr.status_code == 201
+        fid = cr.json()["id"]
+
+        r = await client.put(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences/{fid}",
+            json={"vertices": [
+                {"lat": 31.20, "lng": 121.40},
+                {"lat": 31.22, "lng": 121.44},
+            ]},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_update_fence_negative_radius_rejected(self, client, auth_headers):
+        """Update fence with negative radius should be rejected."""
+        cr = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "RadiusTest", "lat": 31.23, "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert cr.status_code == 201
+        fid = cr.json()["id"]
+
+        r = await client.put(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences/{fid}",
+            json={"radius": -50},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_circle_invalid_lat(self, client, auth_headers):
+        """Circle fence with lat > 90 should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Bad Lat", "lat": 95.0, "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_circle_invalid_lng(self, client, auth_headers):
+        """Circle fence with lng > 180 should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Bad Lng", "lat": 31.23, "lng": 200.0, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_polygon_empty_vertices(self, client, auth_headers):
+        """Polygon with empty vertices array should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Empty Verts", "fence_type": "polygon", "vertices": []},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_polygon_null_vertices(self, client, auth_headers):
+        """Polygon without vertices field should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "No Verts", "fence_type": "polygon"},
             headers=auth_headers,
         )
         assert r.status_code == 422

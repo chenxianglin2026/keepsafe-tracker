@@ -52,14 +52,26 @@ class FenceCreateRequest(BaseModel):
                 raise ValueError("lat, lng, and radius are required for circle fences")
             if self.radius <= 0:
                 raise ValueError("radius must be positive")
+            if self.lat < -90 or self.lat > 90:
+                raise ValueError(f"lat {self.lat} out of range [-90, 90]")
+            if self.lng < -180 or self.lng > 180:
+                raise ValueError(f"lng {self.lng} out of range [-180, 180]")
         elif self.fence_type == "polygon":
             if not self.vertices or len(self.vertices) < 3:
                 raise ValueError("polygon fences require at least 3 vertices")
+            if len(self.vertices) > 100:
+                raise ValueError("polygon fences cannot exceed 100 vertices")
             for v in self.vertices:
                 if v.lat < -90 or v.lat > 90:
                     raise ValueError(f"vertex lat {v.lat} out of range [-90, 90]")
                 if v.lng < -180 or v.lng > 180:
                     raise ValueError(f"vertex lng {v.lng} out of range [-180, 180]")
+            # Check for duplicate consecutive vertices (degenerate edge)
+            for i in range(len(self.vertices)):
+                a = self.vertices[i]
+                b = self.vertices[(i + 1) % len(self.vertices)]
+                if a.lat == b.lat and a.lng == b.lng:
+                    raise ValueError("polygon vertices must not have duplicate consecutive points")
         else:
             raise ValueError("fence_type must be 'circle' or 'polygon'")
         return self
@@ -73,6 +85,29 @@ class FenceUpdateRequest(BaseModel):
     radius: Optional[float] = None
     vertices: Optional[List[VertexItem]] = None
     enabled: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_update_fence_data(self):
+        # Validate polygon vertices if provided
+        if self.vertices is not None:
+            if len(self.vertices) < 3:
+                raise ValueError("polygon fences require at least 3 vertices")
+            if len(self.vertices) > 100:
+                raise ValueError("polygon fences cannot exceed 100 vertices")
+            for v in self.vertices:
+                if v.lat < -90 or v.lat > 90:
+                    raise ValueError(f"vertex lat {v.lat} out of range [-90, 90]")
+                if v.lng < -180 or v.lng > 180:
+                    raise ValueError(f"vertex lng {v.lng} out of range [-180, 180]")
+            for i in range(len(self.vertices)):
+                a = self.vertices[i]
+                b = self.vertices[(i + 1) % len(self.vertices)]
+                if a.lat == b.lat and a.lng == b.lng:
+                    raise ValueError("polygon vertices must not have duplicate consecutive points")
+        # Validate radius if provided
+        if self.radius is not None and self.radius <= 0:
+            raise ValueError("radius must be positive")
+        return self
 
 
 class FenceOut(BaseModel):
