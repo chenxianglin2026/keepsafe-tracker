@@ -38,6 +38,31 @@ STOP = object()
 _fence_states: dict[str, str] = {}
 
 
+def _normalize_ec618_payload(data: dict) -> dict:
+    """Normalize EC618 firmware payload fields to backend expected names.
+
+    EC618 firmware uses abbreviated field names (suited for bandwidth-constrained
+    LTE Cat.1 devices). This maps them to the backend's canonical names.
+    Also handles ESP32-S3 firmware which already uses canonical names.
+    """
+    # Map short -> canonical field names
+    FIELD_MAP = {
+        "spd": "speed",
+        "bat": "battery",
+        "sat": "satellites",
+        "fix": "fix_type",
+        "hdg": "heading",
+        "fw": "fw_version",
+    }
+
+    normalized = {}
+    for key, value in data.items():
+        canonical = FIELD_MAP.get(key, key)
+        normalized[canonical] = value
+
+    return normalized
+
+
 def _haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate great-circle distance in meters between two coordinates."""
     R = 6371000  # Earth radius in meters
@@ -73,32 +98,36 @@ class MQTTClient:
     def _on_message(self, client, topic, payload, qos, properties):
         """Handle incoming MQTT messages.
 
-        NOTE: gmqtt's on_message callback is synchronous. We must schedule
-        async handlers via asyncio.create_task() to actually execute them.
-        Without this, all coroutines would be created but never awaited,
-        resulting in zero activity (the "MQTT silent" bug).
+        Routes by topic pattern (not by a 'type' field in JSON body) because
+        the EC618 firmware sends messages without a type discriminator.
         """
         try:
             data = json.loads(payload.decode("utf-8"))
-            msg_type = data.get("type", "unknown")
             device_id = data.get("device_id", "unknown")
 
-            logger.debug("MQTT msg: type=%s device=%s topic=%s", msg_type, device_id, topic)
+            # Extract device_id from topic as fallback: keepsafe/v1/{device_id}/suffix
+            if device_id == "unknown":
+                parts = topic.split("/")
+                if len(parts) >= 3:
+                    device_id = parts[2]
+
+            logger.debug("MQTT msg: device=%s topic=%s", device_id, topic)
 
             loop = asyncio.get_running_loop()
 
-            if msg_type == "location":
+            # Route by topic suffix (last segment of topic)
+            if topic.endswith("/location"):
                 loop.create_task(self._handle_location(device_id, data))
-            elif msg_type == "heartbeat":
+            elif topic.endswith("/heartbeat"):
                 loop.create_task(self._handle_heartbeat(device_id, data))
-            elif msg_type == "sos":
+            elif topic.endswith("/sos"):
                 loop.create_task(self._handle_sos(device_id, data))
-            elif msg_type == "low_battery":
+            elif topic.endswith("/low_battery") or topic.endswith("/alert/low_battery"):
                 loop.create_task(self._handle_low_battery(device_id, data))
-            elif msg_type == "version":
+            elif topic.endswith("/version"):
                 loop.create_task(self._handle_version(device_id, data))
             else:
-                logger.warning("Unknown message type: %s from %s", msg_type, device_id)
+                logger.warning("Unknown topic: %s from %s", topic, device_id)
 
         except json.JSONDecodeError:
             logger.error("MQTT: invalid JSON payload on %s", topic)
@@ -107,6 +136,9 @@ class MQTTClient:
 
     async def _handle_location(self, device_id: str, data: dict):
         """Process location report: DB insert + Redis update + geofence check + LBS."""
+        # Normalize EC618 abbreviated field names to canonical backend names
+        data = _normalize_ec618_payload(data)
+
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
         # 1. Update Redis cache immediately
@@ -331,6 +363,8 @@ class MQTTClient:
 
     async def _handle_heartbeat(self, device_id: str, data: dict):
         """Process heartbeat: update Redis status + DB last_seen."""
+        data = _normalize_ec618_payload(data)
+
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
         # Update Redis status
@@ -361,6 +395,8 @@ class MQTTClient:
 
     async def _handle_sos(self, device_id: str, data: dict):
         """Process SOS event: DB insert + push notification."""
+        data = _normalize_ec618_payload(data)
+
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
         # Insert into sos_events
@@ -434,6 +470,8 @@ class MQTTClient:
 
     async def _handle_low_battery(self, device_id: str, data: dict):
         """Process low battery alert: DB insert + push notification."""
+        data = _normalize_ec618_payload(data)
+
         ts = datetime.fromtimestamp(data["ts"], tz=timezone.utc)
 
         async with async_session_factory() as session:

@@ -15,6 +15,8 @@
 
 -- Load modules
 local CONFIG = require("config")
+local GPS    = require("gps")
+local MQTT   = require("mqtt")
 
 -- ======================= State Machine =======================
 
@@ -46,18 +48,7 @@ local MQTT_STATE = {
 local mqtt_state = MQTT_STATE.DISCONNECTED
 
 -- ======================= GPS / Location =======================
-
-local gps_data = {
-    latitude   = 0.0,
-    longitude  = 0.0,
-    altitude   = 0.0,
-    speed      = 0.0,
-    heading    = 0.0,
-    satellites = 0,
-    has_fix    = false,
-    fix_type   = 0,
-    hdop       = 99.9,
-}
+-- GPS data is managed by gps.lua module (GPS.get_data() returns a copy)
 
 -- ======================= Battery =======================
 
@@ -74,18 +65,19 @@ local sos_repeat_timer = nil
 
 local function build_location_json()
     local json = require("json")
+    local gps = GPS.get_data()
     local data = {
         device_id = CONFIG.DEVICE_ID,
         fw = CONFIG.FIRMWARE_VERSION,
         ts = os.time(),
-        lat = gps_data.latitude,
-        lng = gps_data.longitude,
-        alt = gps_data.altitude,
-        spd = gps_data.speed,
-        hdg = gps_data.heading,
-        sat = gps_data.satellites,
-        fix = gps_data.fix_type,
-        hdop = gps_data.hdop,
+        lat = gps.latitude,
+        lng = gps.longitude,
+        alt = gps.altitude,
+        spd = gps.speed,
+        hdg = gps.heading,
+        sat = gps.satellites,
+        fix = gps.fix_type,
+        hdop = gps.hdop,
         bat = battery_pct,
     }
     return json.encode(data)
@@ -99,20 +91,21 @@ local function build_heartbeat_json()
         ts = os.time(),
         state = state_names[current_state],
         bat = battery_pct,
-        mqtt = mqtt_state,
+        mqtt = MQTT.get_state(),
     }
     return json.encode(data)
 end
 
 local function build_sos_json()
     local json = require("json")
+    local gps = GPS.get_data()
     local data = {
         device_id = CONFIG.DEVICE_ID,
         fw = CONFIG.FIRMWARE_VERSION,
         ts = os.time(),
         alert = "sos",
-        lat = gps_data.latitude,
-        lng = gps_data.longitude,
+        lat = gps.latitude,
+        lng = gps.longitude,
         bat = battery_pct,
     }
     return json.encode(data)
@@ -145,15 +138,21 @@ local function main_loop()
     -- TODO: call network_init()
 
     -- 2. Configure PSM
-    --    AT+CPSMS=1,,,\"00001000\",\"00000101\"
+    --    AT+CPSMS=1,,,"00001000","00000101"
     log.info("KEEPSAFE", "Configuring PSM...")
     -- TODO: call psm_configure()
 
-    -- 3. Start MQTT client
+    -- 3. Power on GNSS and wait for initial fix
+    log.info("KEEPSAFE", "Initializing GNSS...")
+    GPS.power_on()
+    -- Try to get initial fix (non-blocking: poll in background)
+    -- GPS.wait_for_fix() -- uncomment for blocking wait
+
+    -- 4. Start MQTT client
     log.info("KEEPSAFE", "Starting MQTT client...")
     -- TODO: call mqtt_connect()
 
-    -- 4. Enter main state machine loop
+    -- 5. Enter main state machine loop
     log.info("KEEPSAFE", "Entering state machine loop")
     while true do
         -- Periodic tasks handled by LuatOS timers (sys.timerLoopStart/sys.timerStart)

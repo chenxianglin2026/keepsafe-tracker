@@ -66,6 +66,29 @@ DEFAULT_BAUD   = 115200
 DEFAULT_TIMEOUT = 1.0
 AT_CMD_TIMEOUT  = 10.0                   # Some commands (CONN) take longer
 
+# ============================================================
+# Retry / Reconnection Configuration
+# ============================================================
+
+MAX_RETRIES         = 3                  # Max retries per individual AT command
+RETRY_DELAY_BASE    = 0.5                # Base delay between retries (seconds)
+RETRY_DELAY_MAX     = 10.0               # Maximum delay between retries
+RETRY_BACKOFF       = 2.0                # Exponential backoff multiplier
+
+MAX_STEP_RETRIES    = 3                  # Max retries per flow step (e.g., PDP setup)
+RECONNECT_RETRIES   = 5                  # Max MQTT connect retries
+
+# Steps that can be retried if they fail
+RETRYABLE_STEPS = {
+    "AT": True,
+    "SIM": True,
+    "NETWORK": True,
+    "PDP": True,
+    "PSM": False,       # PSM is optional, don't retry
+    "MQTT_CFG": True,
+    "MQTT_CONN": True,
+}
+
 
 # ============================================================
 # Serial Port Detection
@@ -104,24 +127,33 @@ def find_air780eg_port():
 # ============================================================
 
 class ATSession:
-    """Manage an AT command session over a serial port."""
+    """Manage an AT command session over a serial port with retry support."""
 
-    def __init__(self, port: str, baud: int = DEFAULT_BAUD, timeout: float = DEFAULT_TIMEOUT):
+    def __init__(self, port: str, baud: int = DEFAULT_BAUD,
+                 timeout: float = DEFAULT_TIMEOUT):
         self.port = port
         self.baud = baud
         self.timeout = timeout
         self.ser: Optional[serial.Serial] = None
+        self._consecutive_errors = 0
 
     def connect(self) -> bool:
-        """Open the serial port."""
-        try:
-            self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
-            self.ser.reset_input_buffer()
-            print(f"[SERIAL] Opened {self.port} @ {self.baud} baud")
-            return True
-        except Exception as e:
-            print(f"[ERROR] Cannot open {self.port}: {e}")
-            return False
+        """Open the serial port with retries."""
+        for attempt in range(MAX_RETRIES):
+            try:
+                self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
+                self.ser.reset_input_buffer()
+                print(f"[SERIAL] Opened {self.port} @ {self.baud} baud")
+                return True
+            except Exception as e:
+                delay = min(RETRY_DELAY_BASE * (RETRY_BACKOFF ** attempt), RETRY_DELAY_MAX)
+                print(f"[ERROR] Cannot open {self.port}: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    print(f"[RETRY] Attempt {attempt + 1}/{MAX_RETRIES}, waiting {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    return False
+        return False
 
     def close(self):
         """Close the serial port."""
@@ -129,9 +161,32 @@ class ATSession:
             self.ser.close()
             print(f"[SERIAL] Closed {self.port}")
 
-    def send_at(self, cmd: str, timeout: float = AT_CMD_TIMEOUT) -> Tuple[bool, str]:
+    def _recover_serial(self) -> bool:
+        """Attempt to recover a misbehaving serial connection by closing and reopening."""
+        print("[SERIAL] Attempting serial recovery...")
+        try:
+            if self.ser and self.ser.is_open:
+                self.ser.close()
+            time.sleep(1.0)
+            self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
+            self.ser.reset_input_buffer()
+            # Verify with basic AT
+            self.ser.write(b"AT\r\n")
+            self.ser.flush()
+            time.sleep(0.5)
+            resp = self.ser.read(self.ser.in_waiting or 256).decode("utf-8", errors="replace")
+            if "OK" in resp:
+                print("[SERIAL] Recovery successful")
+                self._consecutive_errors = 0
+                return True
+        except Exception as e:
+            print(f"[SERIAL] Recovery failed: {e}")
+        return False
+
+    def send_at(self, cmd: str, timeout: float = AT_CMD_TIMEOUT,
+                retries: int = MAX_RETRIES) -> Tuple[bool, str]:
         """
-        Send an AT command and wait for response.
+        Send an AT command and wait for response. Retries on failure.
         Returns (success, full_response_string).
         """
         if not self.ser or not self.ser.is_open:
@@ -141,34 +196,69 @@ class ATSession:
         if not cmd.endswith("\r\n"):
             cmd = cmd.rstrip() + "\r\n"
 
-        self.ser.reset_input_buffer()
-        self.ser.write(cmd.encode("utf-8"))
-        self.ser.flush()
+        last_error = ""
+        for attempt in range(retries):
+            try:
+                self.ser.reset_input_buffer()
+                self.ser.write(cmd.encode("utf-8"))
+                self.ser.flush()
+            except Exception as e:
+                print(f"[AT] Write error: {e}")
+                if not self._recover_serial():
+                    return False, f"ERROR: write failed and recovery failed: {e}"
+                continue
 
-        # Read response with timeout
-        self.ser.timeout = timeout
-        response_lines = []
-        start = time.time()
-        while True:
-            line = self.ser.readline()
-            if line:
-                decoded = line.decode("utf-8", errors="replace").strip()
-                if decoded:
-                    response_lines.append(decoded)
-            # Stop when we see OK, ERROR, or timeout
-            full = "\n".join(response_lines)
-            if "OK" in full or "ERROR" in full:
-                break
-            if "CONNECT" in full and "OK" not in full:
-                # CONNECT response might not have trailing OK on some firmwares
-                if time.time() - start > 3.0:
+            # Read response with timeout
+            self.ser.timeout = timeout
+            response_lines = []
+            start = time.time()
+            while True:
+                try:
+                    line = self.ser.readline()
+                except Exception as e:
+                    print(f"[AT] Read error: {e}")
                     break
-            if time.time() - start > timeout:
-                break
 
-        full_response = "\n".join(response_lines)
-        success = "OK" in full_response and "ERROR" not in full_response
-        return success, full_response
+                if line:
+                    decoded = line.decode("utf-8", errors="replace").strip()
+                    if decoded:
+                        response_lines.append(decoded)
+                # Stop when we see OK, ERROR, or timeout
+                full = "\n".join(response_lines)
+                if "OK" in full or "ERROR" in full:
+                    break
+                if "CONNECT" in full and "OK" not in full:
+                    if time.time() - start > 3.0:
+                        break
+                if time.time() - start > timeout:
+                    break
+
+            full_response = "\n".join(response_lines)
+            success = "OK" in full_response and "ERROR" not in full_response
+
+            if success:
+                self._consecutive_errors = 0
+                return True, full_response
+
+            # Failed this attempt
+            last_error = full_response or "no response"
+            self._consecutive_errors += 1
+
+            if attempt < retries - 1:
+                delay = min(RETRY_DELAY_BASE * (RETRY_BACKOFF ** attempt), RETRY_DELAY_MAX)
+                print(f"[AT] Command failed (attempt {attempt + 1}/{retries}), "
+                      f"retrying in {delay:.1f}s...")
+                time.sleep(delay)
+
+            # If we have consecutive errors, try serial recovery
+            if self._consecutive_errors >= 3:
+                if not self._recover_serial():
+                    return False, f"ERROR: {last_error} (serial recovery failed)"
+                self._consecutive_errors = 0
+
+        return False, f"ERROR: {last_error} (all {retries} retries exhausted)"
+
+    # ── AT command wrappers ──
 
     def at_basic(self) -> bool:
         """Test basic AT communication."""
@@ -215,14 +305,18 @@ class ATSession:
         return registered
 
     def at_pdp_setup(self) -> bool:
-        """Configure and activate PDP context."""
+        """Configure and activate PDP context with retries."""
         # Configure PDP context
         ok, resp = self.send_at(f'AT+CGDCONT={PDP_CID},"IP","{APN_NAME}"')
         print(f"[PDP] CGDCONT: {'OK' if ok else 'FAIL'}")
+        if not ok:
+            return False
 
         # Activate PDP
         ok, resp = self.send_at(f"AT+CGACT=1,{PDP_CID}")
         print(f"[PDP] CGACT: {'OK' if ok else 'FAIL'}")
+        if not ok:
+            return False
 
         # Check IP
         ok, resp = self.send_at(f"AT+CGPADDR={PDP_CID}")
@@ -241,6 +335,54 @@ class ATSession:
         ok, resp = self.send_at(cmd)
         print(f"[PSM] CPSMS: {'OK' if ok else 'FAIL'}")
         return ok
+
+    def at_cgnsinf(self) -> Optional[dict]:
+        """Get GNSS navigation info via AT+CGNSINF.
+        Returns parsed GPS data dict or None on failure."""
+        ok, resp = self.send_at("AT+CGNSINF", timeout=5.0)
+        if not ok:
+            print(f"[GPS] CGNSINF failed: {resp}")
+            return None
+
+        # Parse: +CGNSINF: mode,lat,lng,alt,speed,course,,sv_count,hdop,pdop,vdop,utc
+        match = re.search(r'\+CGNSINF:\s*(.+)', resp)
+        if not match:
+            print(f"[GPS] CGNSINF parse error: {resp}")
+            return None
+
+        fields = match.group(1).split(",")
+        if len(fields) < 10:
+            print(f"[GPS] CGNSINF too few fields: {len(fields)}")
+            return None
+
+        try:
+            mode = int(fields[0]) if fields[0].strip() else 0
+            lat = float(fields[1]) if fields[1].strip() else 0.0
+            lng = float(fields[2]) if fields[2].strip() else 0.0
+            alt = float(fields[3]) if fields[3].strip() else 0.0
+            speed_kmh = float(fields[4]) if fields[4].strip() else 0.0
+            course = float(fields[5]) if fields[5].strip() else 0.0
+            sv_count = int(fields[7]) if len(fields) > 7 and fields[7].strip() else 0
+            hdop = float(fields[8]) if len(fields) > 8 and fields[8].strip() else 99.9
+
+            gps = {
+                "has_fix": mode > 0 and lat != 0.0 and lng != 0.0,
+                "mode": mode,
+                "lat": lat,
+                "lng": lng,
+                "alt": alt,
+                "speed": speed_kmh / 3.6,  # km/h -> m/s
+                "heading": course,
+                "satellites": sv_count,
+                "hdop": hdop,
+            }
+            status = "3D" if mode == 2 else ("2D" if mode == 1 else "NO FIX")
+            print(f"[GPS] {status}: lat={lat:.6f} lng={lng:.6f} alt={alt:.1f}m "
+                  f"spd={speed_kmh:.1f}km/h sat={sv_count} hdop={hdop:.1f}")
+            return gps
+        except (ValueError, IndexError) as e:
+            print(f"[GPS] CGNSINF value error: {e}")
+            return None
 
 
 # ============================================================
@@ -272,33 +414,47 @@ class MQTTATClient:
         print(f"[MQTT] CONNCFG: {'OK' if ok else 'FAIL'} -> {resp}")
         return ok
 
-    def connect(self) -> bool:
+    def connect(self, max_retries: int = RECONNECT_RETRIES) -> bool:
         """
         AT+MQTTCONN=<profile>,<host>,<port>,<reconnect>
         Initiate MQTT connection. Response comes as URC +MQTTCONNACK.
+        Retries with exponential backoff on failure.
         """
-        cmd = f'AT+MQTTCONN=0,"{MQTT_BROKER_HOST}",{MQTT_BROKER_PORT},0'
-        ok, resp = self.at.send_at(cmd, timeout=15.0)
-        print(f"[MQTT] CONN: {'OK' if ok else 'FAIL'} -> {resp}")
+        for attempt in range(max_retries):
+            cmd = f'AT+MQTTCONN=0,"{MQTT_BROKER_HOST}",{MQTT_BROKER_PORT},0'
+            ok, resp = self.at.send_at(cmd, timeout=15.0)
+            print(f"[MQTT] CONN (attempt {attempt + 1}/{max_retries}): "
+                  f"{'OK' if ok else 'FAIL'} -> {resp}")
 
-        # Wait for +MQTTCONNACK URC
-        if ok:
-            time.sleep(2.0)  # Give modem time to establish TCP + MQTT handshake
-            # Read any pending URC
-            self.at.ser.timeout = 3.0
-            extra = self.at.ser.read(self.at.ser.in_waiting or 256).decode("utf-8", errors="replace")
-            print(f"[MQTT] URC: {extra.strip()}")
+            if ok:
+                # Wait for +MQTTCONNACK URC
+                time.sleep(2.0)
+                # Read any pending URC
+                self.at.ser.timeout = 3.0
+                extra = self.at.ser.read(self.at.ser.in_waiting or 256).decode(
+                    "utf-8", errors="replace")
 
-            if "+MQTTCONNACK: 0,0,0" in extra:
-                self.connected = True
-                print("[MQTT] Connection accepted by broker (result=0, code=0)")
-            elif "+MQTTCONNACK:" in extra:
-                print(f"[MQTT] Connection rejected: {extra.strip()}")
-            else:
-                # Some firmwares return OK after CONNACK
-                self.connected = True
-                print("[MQTT] Connection assumed OK (no CONNACK rejection)")
-        return self.connected
+                if "+MQTTCONNACK: 0,0,0" in extra:
+                    self.connected = True
+                    print("[MQTT] Connection accepted by broker (result=0, code=0)")
+                    return True
+                elif "+MQTTCONNACK:" in extra:
+                    print(f"[MQTT] Connection rejected: {extra.strip()}")
+                else:
+                    # Some firmwares return OK after CONNACK
+                    self.connected = True
+                    print("[MQTT] Connection assumed OK (no CONNACK rejection)")
+                    return True
+
+            # Failed this attempt
+            if attempt < max_retries - 1:
+                delay = min(RETRY_DELAY_BASE * (RETRY_BACKOFF ** attempt) * 2,
+                           RETRY_DELAY_MAX)
+                print(f"[MQTT] Connect failed, retrying in {delay:.1f}s...")
+                time.sleep(delay)
+
+        print(f"[MQTT] Connect failed after {max_retries} attempts")
+        return False
 
     def publish(self, topic: str, payload: str, qos: int = 1) -> bool:
         """
@@ -316,7 +472,8 @@ class MQTTATClient:
         if ok and qos > 0:
             time.sleep(0.5)
             self.at.ser.timeout = 2.0
-            extra = self.at.ser.read(self.at.ser.in_waiting or 256).decode("utf-8", errors="replace")
+            extra = self.at.ser.read(self.at.ser.in_waiting or 256).decode(
+                "utf-8", errors="replace")
             if "+MQTTPUBACK:" in extra:
                 print(f"[MQTT] PUBACK received: {extra.strip()}")
             else:
@@ -348,11 +505,44 @@ class MQTTATClient:
     def read_downlink(self) -> Optional[str]:
         """Check for any subscribed messages (non-blocking)."""
         self.at.ser.timeout = 0.1
-        data = self.at.ser.read(self.at.ser.in_waiting or 256).decode("utf-8", errors="replace")
+        data = self.at.ser.read(self.at.ser.in_waiting or 256).decode(
+            "utf-8", errors="replace")
         if "+MQTTSUBRECV:" in data:
             print(f"[MQTT] DOWNLINK: {data.strip()}")
             return data.strip()
         return None
+
+
+# ============================================================
+# Retry Helpers
+# ============================================================
+
+def retry_with_backoff(func, step_name: str, max_retries: int = MAX_STEP_RETRIES,
+                       fatal: bool = True) -> bool:
+    """
+    Execute func with exponential backoff retries.
+    Returns True on success, False if all retries exhausted.
+    If fatal=False (for optional steps), returns True even on failure.
+    """
+    for attempt in range(max_retries):
+        try:
+            if func():
+                return True
+        except Exception as e:
+            print(f"[{step_name}] Exception: {e}")
+
+        if attempt < max_retries - 1:
+            delay = min(RETRY_DELAY_BASE * (RETRY_BACKOFF ** attempt), RETRY_DELAY_MAX)
+            print(f"[{step_name}] Step failed (attempt {attempt + 1}/{max_retries}), "
+                  f"retrying in {delay:.1f}s...")
+            time.sleep(delay)
+
+    if fatal:
+        print(f"[FAIL] {step_name} failed after {max_retries} retries")
+        return False
+    else:
+        print(f"[WARN] {step_name} failed (non-fatal, continuing)")
+        return True
 
 
 # ============================================================
@@ -361,7 +551,7 @@ class MQTTATClient:
 
 def run_mqtt_flow(session: ATSession) -> bool:
     """
-    Execute the complete MQTT connection flow:
+    Execute the complete MQTT connection flow with retry:
     1. Verify AT communication
     2. Check SIM & network registration
     3. Set up PDP context
@@ -380,8 +570,7 @@ def run_mqtt_flow(session: ATSession) -> bool:
 
     # Step 1: Basic AT check
     print("--- Step 1: AT Communication ---")
-    if not session.at_basic():
-        print("[FAIL] AT communication failed. Check serial connection.")
+    if not retry_with_backoff(session.at_basic, "AT"):
         return False
 
     # Step 2: Check firmware type
@@ -396,8 +585,7 @@ def run_mqtt_flow(session: ATSession) -> bool:
 
     # Step 3: SIM check
     print("\n--- Step 3: SIM Card ---")
-    if not session.at_check_sim():
-        print("[FAIL] SIM card not ready. Insert SIM and try again.")
+    if not retry_with_backoff(session.at_check_sim, "SIM"):
         return False
 
     # Step 4: Signal strength
@@ -406,45 +594,60 @@ def run_mqtt_flow(session: ATSession) -> bool:
 
     # Step 5: Network registration
     print("\n--- Step 5: Network Registration ---")
-    if not session.at_network_reg():
+    if not retry_with_backoff(session.at_network_reg, "NETWORK"):
         print("[WARN] Network not registered. Continuing anyway...")
 
     # Step 6: PDP context + activation
     print("\n--- Step 6: PDP Setup ---")
-    if not session.at_pdp_setup():
-        print("[FAIL] PDP activation failed. Check APN and SIM plan.")
+    if not retry_with_backoff(session.at_pdp_setup, "PDP"):
         return False
 
-    # Step 7: PSM configuration
+    # Step 7: PSM configuration (optional)
     print("\n--- Step 7: PSM Configuration ---")
-    session.at_psm_configure()
+    retry_with_backoff(session.at_psm_configure, "PSM", fatal=False)
 
     # Step 8: MQTT CONNCFG
     print("\n--- Step 8: MQTT Config (MQTTCONNCFG) ---")
-    if not mqtt.configure():
-        print("[FAIL] MQTT CONNCFG failed.")
+    if not retry_with_backoff(mqtt.configure, "MQTT_CFG"):
         return False
 
     # Step 9: MQTT CONN
     print("\n--- Step 9: MQTT Connect (MQTTCONN) ---")
     if not mqtt.connect():
-        print("[FAIL] MQTT connection failed. Check broker availability.")
+        print("[FAIL] MQTT connection failed after all retries. Check broker availability.")
         return False
 
     # Step 10: Publish test messages
     print("\n--- Step 10: Publish Test Messages ---")
 
-    # Location report
+    # Location report (with GPS poll if available)
+    print("Polling GPS...")
+    gps_data = session.at_cgnsinf()
+    lat = 22.5431
+    lng = 113.9346
+    alt = 15.0
+    spd = 0.5
+    sat = 12
+    fix = 1
+    if gps_data and gps_data["has_fix"]:
+        lat = gps_data["lat"]
+        lng = gps_data["lng"]
+        alt = gps_data["alt"]
+        spd = gps_data["speed"]
+        sat = gps_data["satellites"]
+        fix = 2 if gps_data["mode"] == 2 else 1
+        print("[GPS] Using real GPS data for location report")
+
     location_payload = json_mod.dumps({
         "device_id": MQTT_CLIENT_ID,
         "fw": "ec618-test",
         "ts": int(time.time()),
-        "lat": 22.5431,
-        "lng": 113.9346,
-        "alt": 15.0,
-        "spd": 0.5,
-        "sat": 12,
-        "fix": 1,
+        "lat": lat,
+        "lng": lng,
+        "alt": alt,
+        "spd": spd,
+        "sat": sat,
+        "fix": fix,
         "bat": 95,
     })
     mqtt.publish(TOPIC_LOCATION, location_payload, MQTT_QOS_LOCATION)
@@ -470,13 +673,11 @@ def run_mqtt_flow(session: ATSession) -> bool:
         "fw": "ec618-test",
         "ts": int(time.time()),
         "alert": "sos",
-        "lat": 22.5431,
-        "lng": 113.9346,
+        "lat": lat,
+        "lng": lng,
         "bat": 95,
     })
     mqtt.publish(TOPIC_SOS, sos_payload, MQTT_QOS_SOS)
-
-    # Note: low_battery topic tested only when battery < threshold
 
     # Step 11: Subscribe (for downlink)
     print("\n--- Step 11: Subscribe Downlink ---")
@@ -513,6 +714,10 @@ def main():
                         help="Publish a custom JSON payload to location topic and exit")
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD,
                         help=f"Baud rate (default: {DEFAULT_BAUD})")
+    parser.add_argument("--gps", action="store_true",
+                        help="Quick GPS poll via AT+CGNSINF and exit")
+    parser.add_argument("--max-retries", type=int, default=MAX_RETRIES,
+                        help=f"Max retries per AT command (default: {MAX_RETRIES})")
     args = parser.parse_args()
 
     # --list: show ports and exit
@@ -546,7 +751,15 @@ def main():
         sys.exit(1)
 
     try:
-        if args.publish:
+        if args.gps:
+            # Quick GPS poll
+            print("Polling GPS (AT+CGNSINF)...")
+            gps = session.at_cgnsinf()
+            if gps:
+                print(json_mod.dumps(gps, indent=2))
+            else:
+                print("[GPS] No fix or GPS not available")
+        elif args.publish:
             # Quick publish mode
             print(f"Publishing custom payload: {args.publish}")
             mqtt = MQTTATClient(session)
@@ -561,6 +774,13 @@ def main():
                 sys.exit(1)
             else:
                 print("\n[RESULT] MQTT flow PASSED.")
+    except KeyboardInterrupt:
+        print("\n[INFO] Interrupted by user")
+    except Exception as e:
+        print(f"\n[FATAL] Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     finally:
         session.close()
 
