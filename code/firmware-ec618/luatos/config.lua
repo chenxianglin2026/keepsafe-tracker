@@ -62,6 +62,12 @@ CONFIG.SOS_MAX_DEBOUNCE_MS = 50
 CONFIG.RECONNECT_BASE_MS    = 1000     -- 1 second
 CONFIG.RECONNECT_MAX_MS     = 300000   -- 5 minutes
 CONFIG.RECONNECT_MULTIPLIER = 2        -- exponential: 1s, 2s, 4s, 8s...
+CONFIG.RECONNECT_MAX_FAILURES = 10     -- circuit breaker: max consecutive failures
+
+-- ======================= Network Monitoring =======================
+CONFIG.NET_CHECK_INTERVAL_MS = 30000   -- 30 seconds between network status checks
+CONFIG.NET_MAX_RECOVERY_ATTEMPTS = 5   -- max PDP re-activation attempts
+CONFIG.NET_RECOVERY_DELAY_MS = 5000    -- 5 seconds between recovery attempts
 
 -- ======================= LED Pulses =======================
 CONFIG.LED_PULSE_DUTY_MS = 50          -- visibility pulse width

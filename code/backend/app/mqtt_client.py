@@ -210,7 +210,8 @@ class MQTTClient:
                 VALUES (:device_id, '', :fw_version, :last_seen, TRUE)
                 ON CONFLICT (device_id)
                 DO UPDATE SET last_seen = :last_seen,
-                              fw_version = COALESCE(:fw_version, devices.fw_version)
+                              fw_version = COALESCE(:fw_version, devices.fw_version),
+                              is_active = TRUE
                 """,
                 {
                     "device_id": device_id,
@@ -378,14 +379,15 @@ class MQTTClient:
         }
         await set_device_status(device_id, status)
 
-        # Update DB last_seen
+        # Update DB last_seen and reactivate if needed
         async with async_session_factory() as session:
             await session.execute(
                 """
                 INSERT INTO devices (device_id, device_token, last_seen, is_active)
                 VALUES (:device_id, '', :last_seen, TRUE)
                 ON CONFLICT (device_id)
-                DO UPDATE SET last_seen = :last_seen
+                DO UPDATE SET last_seen = :last_seen,
+                              is_active = TRUE
                 """,
                 {"device_id": device_id, "last_seen": ts},
             )

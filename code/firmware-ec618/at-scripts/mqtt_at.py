@@ -20,6 +20,7 @@ Usage:
   python3 mqtt_at.py --port /dev/cu.usbmodem0000000000013   # Run MQTT flow on specified port
   python3 mqtt_at.py --auto                                   # Auto-detect Air780EG port
   python3 mqtt_at.py --port /dev/cu.xxx --publish '{"test":1}' # Publish custom payload
+  python3 mqtt_at.py --mock                                   # Simulate AT responses (no hardware needed)
   python3 mqtt_at.py --list                                   # List available serial ports
 """
 
@@ -120,6 +121,201 @@ def find_air780eg_port():
         except Exception:
             continue
     return None
+
+
+# ============================================================
+# Mock AT Session (for testing without hardware)
+# ============================================================
+
+class MockATSession:
+    """Simulates AT responses for testing the MQTT flow without real hardware.
+
+    Activated via --mock flag. All AT commands return pre-canned successful
+    responses. GPS returns a synthetic fix near Shenzhen (22.5431, 113.9346).
+    MQTT connect returns CONNACK with result=0 (success).
+
+    This allows testing the full flow logic (AT, SIM, PDP, MQTT configure,
+    connect, publish, subscribe, disconnect) without an actual Air780EG module.
+    """
+
+    GPS_SYNTHETIC = "+CGNSINF: 2,22.543100,113.934600,15.0,1.8,270.0,,12,0.9,1.2,1.5,20260610120000"
+
+    def __init__(self, port: str = "mock", baud: int = DEFAULT_BAUD,
+                 timeout: float = DEFAULT_TIMEOUT):
+        self.port = port
+        self.baud = baud
+        self.timeout = timeout
+        self.connected = False
+        self._mqtt_connected = False
+        self._call_count = 0
+        self.ser = None  # Compat with MQTTATClient.connect URC read
+        # Mock serial-like object for URC reads
+        class _MockSer:
+            timeout = 1.0
+            def read(self, n):
+                return b""
+            @property
+            def in_waiting(self):
+                return 0
+        self.ser = _MockSer()
+
+    def connect(self) -> bool:
+        print(f"[MOCK] Serial port {self.port} @ {self.baud} baud (simulated)")
+        self.connected = True
+        return True
+
+    def close(self):
+        self.connected = False
+        print("[MOCK] Serial port closed (simulated)")
+
+    def send_at(self, cmd: str, timeout: float = AT_CMD_TIMEOUT,
+                retries: int = MAX_RETRIES):
+        """Simulate AT command response based on the command."""
+        self._call_count += 1
+        cmd_clean = cmd.strip().rstrip("\r\n")
+        # Simulate processing delay
+        import random
+        time.sleep(random.uniform(0.05, 0.15))
+
+        if cmd_clean == "AT":
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CGMR":
+            return True, "\r\n+CGMER: AirM2M_EC618_AT_FW_V1.0\r\n\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CPIN?":
+            return True, "\r\n+CPIN: READY\r\n\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CSQ":
+            return True, "\r\n+CSQ: 25,99\r\n\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CEREG?":
+            return True, "\r\n+CEREG: 0,1\r\n\r\nOK\r\n"
+
+        elif cmd_clean.startswith("AT+CGDCONT="):
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CGACT=1,1":
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CGPADDR=1":
+            return True, '\r\n+CGPADDR: 1,"10.10.10.10"\r\n\r\nOK\r\n'
+
+        elif cmd_clean.startswith("AT+CPSMS="):
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean.startswith("AT+MQTTCONNCFG="):
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean.startswith("AT+MQTTCONN="):
+            self._mqtt_connected = True
+            return True, "\r\nOK\r\n+MQTTCONNACK: 0,0,0\r\n"
+
+        elif cmd_clean.startswith("AT+MQTTPUB="):
+            return True, "\r\nOK\r\n+MQTTPUBACK: 0\r\n"
+
+        elif cmd_clean.startswith("AT+MQTTSUB="):
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean == "AT+MQTTDISC=0":
+            self._mqtt_connected = False
+            return True, "\r\nOK\r\n"
+
+        elif cmd_clean == "AT+CGNSINF":
+            return True, f"\r\n{MockATSession.GPS_SYNTHETIC}\r\nOK\r\n"
+
+        else:
+            # Unknown command - return OK anyway for robustness in mock mode
+            print(f"[MOCK] Unknown AT command: {cmd_clean[:60]}")
+            return True, "\r\nOK\r\n"
+
+    # ── AT command wrappers (delegated from ATSession API) ──
+
+    def at_basic(self) -> bool:
+        ok, resp = self.send_at("AT")
+        print(f"[MOCK] AT -> {'OK' if ok else 'FAIL'}: {resp}")
+        return ok
+
+    def at_check_firmware(self):
+        ok, resp = self.send_at("AT+CGMR")
+        fw_type = "AT_FIRMWARE" if "AirM2M" in resp else "UNKNOWN"
+        print(f"[MOCK] Firmware type: {fw_type}")
+        return ok, fw_type
+
+    def at_check_sim(self) -> bool:
+        ok, resp = self.send_at("AT+CPIN?")
+        ready = "+CPIN: READY" in resp
+        print(f"[MOCK] SIM status: {'READY' if ready else 'NOT READY'}")
+        return ready
+
+    def at_csq(self):
+        ok, resp = self.send_at("AT+CSQ")
+        match = re.search(r'\+CSQ:\s*(\d+)', resp)
+        if match:
+            rssi = int(match.group(1))
+            print(f"[MOCK] Signal strength: {rssi} (0-31)")
+            return rssi
+        return None
+
+    def at_network_reg(self) -> bool:
+        ok, resp = self.send_at("AT+CEREG?")
+        registered = bool(re.search(r'\+CEREG:\s*\d+,\s*[15]', resp))
+        print(f"[MOCK] Network: {'REGISTERED' if registered else 'NOT REGISTERED'}")
+        return registered
+
+    def at_pdp_setup(self) -> bool:
+        self.send_at('AT+CGDCONT=1,"IP","ctnet"')
+        self.send_at("AT+CGACT=1,1")
+        ok, resp = self.send_at("AT+CGPADDR=1")
+        ip_match = re.search(r'\+CGPADDR:\s*\d+,\s*"?([\d.]+)"?', resp)
+        if ip_match:
+            print(f"[MOCK] Got IP: {ip_match.group(1)}")
+            return True
+        return False
+
+    def at_psm_configure(self) -> bool:
+        cmd = f'AT+CPSMS=1,,,"{PSM_ACTIVE_TIMER}","{PSM_TAU_PERIOD}"'
+        ok, resp = self.send_at(cmd)
+        print(f"[MOCK] PSM: {'OK' if ok else 'FAIL'}")
+        return ok
+
+    def at_cgnsinf(self):
+        ok, resp = self.send_at("AT+CGNSINF", timeout=5.0)
+        if not ok:
+            return None
+        match = re.search(r'\+CGNSINF:\s*(.+)', resp)
+        if not match:
+            return None
+        fields = match.group(1).split(",")
+        if len(fields) < 10:
+            return None
+        try:
+            mode = int(fields[0]) if fields[0].strip() else 0
+            lat = float(fields[1]) if fields[1].strip() else 0.0
+            lng = float(fields[2]) if fields[2].strip() else 0.0
+            alt = float(fields[3]) if fields[3].strip() else 0.0
+            speed_kmh = float(fields[4]) if fields[4].strip() else 0.0
+            course = float(fields[5]) if fields[5].strip() else 0.0
+            sv_count = int(fields[7]) if len(fields) > 7 and fields[7].strip() else 0
+            hdop = float(fields[8]) if len(fields) > 8 and fields[8].strip() else 99.9
+            gps = {
+                "has_fix": mode > 0 and lat != 0.0 and lng != 0.0,
+                "mode": mode,
+                "lat": lat,
+                "lng": lng,
+                "alt": alt,
+                "speed": speed_kmh / 3.6,
+                "heading": course,
+                "satellites": sv_count,
+                "hdop": hdop,
+            }
+            status = "3D" if mode == 2 else ("2D" if mode == 1 else "NO FIX")
+            print(f"[MOCK GPS] {status}: lat={lat:.6f} lng={lng:.6f} alt={alt:.1f}m "
+                  f"spd={speed_kmh:.1f}km/h sat={sv_count}")
+            return gps
+        except (ValueError, IndexError) as e:
+            print(f"[MOCK GPS] Parse error: {e}")
+            return None
 
 
 # ============================================================
@@ -396,7 +592,7 @@ class MQTTATClient:
     URC responses: +MQTTCONNACK, +MQTTPUBACK, +MQTTDISCONNECT, +MQTTSUBRECV
     """
 
-    def __init__(self, session: ATSession):
+    def __init__(self, session):
         self.at = session
         self.connected = False
 
@@ -549,7 +745,7 @@ def retry_with_backoff(func, step_name: str, max_retries: int = MAX_STEP_RETRIES
 # MQTT Flow: Full Connection + Publish Sequence
 # ============================================================
 
-def run_mqtt_flow(session: ATSession) -> bool:
+def run_mqtt_flow(session) -> bool:
     """
     Execute the complete MQTT connection flow with retry:
     1. Verify AT communication
@@ -716,6 +912,8 @@ def main():
                         help=f"Baud rate (default: {DEFAULT_BAUD})")
     parser.add_argument("--gps", action="store_true",
                         help="Quick GPS poll via AT+CGNSINF and exit")
+    parser.add_argument("--mock", action="store_true",
+                        help="Simulate AT responses for testing (no hardware needed)")
     parser.add_argument("--max-retries", type=int, default=MAX_RETRIES,
                         help=f"Max retries per AT command (default: {MAX_RETRIES})")
     args = parser.parse_args()
@@ -733,6 +931,40 @@ def main():
 
     # Determine port
     port = args.port
+    if args.mock:
+        # Mock mode: no hardware needed, simulate AT responses
+        print("[MOCK] Running in simulation mode (--mock)")
+        print("[MOCK] All AT commands will be simulated. No serial port required.")
+        session = MockATSession(port="mock", baud=args.baud)
+        if not session.connect():
+            sys.exit(1)
+        try:
+            if args.gps:
+                print("[MOCK] Polling GPS (simulated)...")
+                gps = session.at_cgnsinf()
+                if gps:
+                    print(json_mod.dumps(gps, indent=2))
+                else:
+                    print("[MOCK GPS] No fix simulated")
+            elif args.publish:
+                print(f"[MOCK] Publishing custom payload: {args.publish}")
+                mqtt = MQTTATClient(session)
+                if mqtt.configure() and mqtt.connect():
+                    mqtt.publish(TOPIC_LOCATION, args.publish)
+                    mqtt.disconnect()
+            else:
+                success = run_mqtt_flow(session)
+                if not success:
+                    print("\n[RESULT] MQTT mock flow FAILED.")
+                    sys.exit(1)
+                else:
+                    print("\n[RESULT] MQTT mock flow PASSED. (All steps simulated successfully)")
+        except KeyboardInterrupt:
+            print("\n[INFO] Interrupted by user")
+        finally:
+            session.close()
+        return
+
     if args.auto and not port:
         print("Auto-detecting Air780EG port...")
         port = find_air780eg_port()
