@@ -60,3 +60,18 @@ You wake up fresh each session. These files are your continuity:
 - Don't exfiltrate private data.
 - Don't run destructive commands without asking.
 - `trash` > `rm`
+
+## Governance (三项目治理体系)
+
+**必读文档** (每次操作前判定):
+- `docs/GOVERNANCE.md` — 治理总纲
+- `docs/BOUNDARIES.md` — 可改/不可改区域
+- `docs/RISK-TIERS.md` — 风险分级 Tier0-3
+
+**执行规则**:
+- Tier0-1: 自主执行
+- Tier2: 报告中注明风险+回滚方案
+- Tier3: 向陈总报告→等待确认→执行
+
+**当天结束后写入**: `docs/LESSONS.md` (经验)
+**每日复盘模板**: `~/projects/daily/TEMPLATE.md`
