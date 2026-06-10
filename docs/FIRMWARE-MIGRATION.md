@@ -1,10 +1,11 @@
-# KeepSafe EC618 固件迁移准备
+# KeepSafe 固件迁移准备 (YED DTU3 / EC718P)
 
 > 文档类型: 固件迁移清单 + 操作指南
-> 日期: 2026-06-08 (更新)
-> 当前固件: ESP32-S3 (ESP-IDF) + Air780E 外挂 Modem
-> 目标平台: EC618 内核 (合宙 Air780EG 模组, LuatOS 方案)
-> 状态: 准备阶段 — Air780EG 开发板已到货，待 SIM 卡到位后开始验证
+> 日期: 2026-06-10 (更新)
+> 当前硬件: YED DTU3 (EC718P-M100PG, 非 EC618) 
+> 当前固件: LuatOS-SoC V1003 (出厂预装)
+> 原方案: ESP32-S3 (ESP-IDF) + Air780E 外挂 Modem → EC618 → 现为 EC718P DTU
+> 状态: 适配阶段 — YED DTU3 到位, DTU协议适配中
 
 ---
 
@@ -12,8 +13,8 @@
 
 | 硬件 | 状态 | 备注 |
 |------|------|------|
-| Air780EG (EC618 内核) 开发板 | ✅ 已采购 | 2026-06-05 到货，合宙官方开发板 / 核心板 |
-| Air780EG 模组规格 | ✅ 确认 | EC618 内核, 支持 LTE Cat.1 + GNSS, LuatOS 固件 |
+| Air780EG (EC618 内核) 开发板 | ✅ 已替换 | YED DTU3 (EC718P) 替代, 2026-06-10 |
+| YED DTU3 (EC718P-M100PG) | ✅ 已到位 | 亿佰特 DTU, LuatOS-SoC V1003 |
 | SIM 卡 | ⬜ 待准备 | 需物联网卡 (推荐电信 ctnet APN, 或移动 cmnet) |
 | 4G 天线 (IPEX-1) | ⬜ 待确认 | 开发板通常自带 FPC 天线或 IPEX 接口 |
 | USB 转串口 | ✅ 内置 | Air780EG 开发板板载 USB-TypeC + CH340/CH343 串口芯片 |
@@ -91,13 +92,13 @@
 
 ### Step 1: 硬件连接 (预计 5 分钟)
 
-Air780EG 开发板通常自带 USB-TypeC 接口和板载 CH340/CH343 串口芯片，无需外接 USB 转串口模块:
+YED DTU3 自带 USB-TypeC 接口和板载 CH340/CH343 串口芯片，无需外接 USB 转串口模块:
 
 ```
-Air780EG 开发板 Type-C ─── USB 线 ─── 电脑 USB 口
+YED DTU3 Type-C ─── USB 线 ─── 电脑 USB 口
   (板载串口芯片自动完成 USB↔UART 转换)
 
-开发板上:
+DTU 上:
   - Type-C 口供电 + 串口通信 (二合一)
   - NET 灯: 4G 网络状态指示 (快闪=搜网, 慢闪=已注册)
   - STA 灯: 模块运行状态
@@ -108,11 +109,11 @@ Air780EG 开发板 Type-C ─── USB 线 ─── 电脑 USB 口
 ### Step 2: 串口连接验证 (预计 5 分钟)
 
 ```bash
-# macOS 识别串口 (Air780EG 通常显示为 cu.usbserial-XXXX 或 cu.wchusbserial-XXXX)
+# macOS 识别串口 (YED DTU3 通常显示为 cu.usbserial-XXXX 或 cu.wchusbserial-XXXX)
 ls /dev/cu.*usbserial*
 ls /dev/cu.*usbmodem*
 
-# 串口通信 (115200 8N1, Air780EG 默认波特率)
+# 串口通信 (115200 8N1, DTU默认波特率)
 screen /dev/cu.usbserial-XXXX 115200
 
 # 或使用项目自带脚本自动检测并测试:
@@ -127,8 +128,8 @@ AT+CPIN?
 
 AT+CGMR
 # 查看固件版本 (确认是 LuatOS 还是 AT 固件)
-# AT 固件返回类似: "AirM2M_780EG_VXXXX_LTE_AT"
-# LuatOS 固件返回类似: "LuatOS-SoC_VXXXX_EC618"
+# AT 固件返回类似: "AirM2M_EC718P_VXXXX_LTE_AT"
+# LuatOS-SoC 固件返回类似: "LuatOS-SoC_V1003_EC718P"
 ```
 
 ### Step 3: 4G 网络注册验证 (预计 5 分钟)
@@ -190,16 +191,16 @@ AT+MQTT?
 
 **决策结果 (推荐):**
 
-**方案 A — LuatOS (推荐, 默认选择):**
-- Air780EG 出厂预装 LuatOS, 无需重新烧录
-- 合宙官方持续维护 LuatOS, 生态成熟
+**方案 A — LuatOS-SoC (推荐, 默认选择):**
+- YED DTU3 出厂预装 LuatOS-SoC V1003, 无需重新烧录
+- EC718P 是移芯新一代 Cat.1 bis 芯片, LuatOS 生态成熟
 - MQTT 通过 Lua socket 库实现, 灵活可控
 - 项目现有 C 代码逻辑直接翻译为 Lua
 - JSON 构建/NMEA 解析/状态机在 Lua 中简洁实现
-- 无需外挂 MCU (ESP32-S3可省去), Air780EG 单芯片搞定
+- 无需外挂 MCU (ESP32-S3 可省去), DTU 单芯片搞定
 
 **方案 B — AT 固件 (备选):**
-- 需要手动烧录合宙 AT 固件
+- 需要手动烧录 AT 固件
 - MQTT 通过 AT+MQTTCONNCFG/PUB/SUB 等指令
 - 适合已有 MCU (ESP32-S3) 做主控的场景
 - AT 指令串行执行, 实时性不如 LuatOS 事件驱动
@@ -250,20 +251,20 @@ AT+CEDRXS?
 
 ### 重要决策点: LuatOS vs AT 最终确认
 
-**Air780EG (EC618) 出厂默认为 LuatOS 固件。** 合宙官方推荐使用 LuatOS 进行二次开发。
+**Air780EG (EC618) 出厂默认为 LuatOS 固件。本项目已切换为 YED DTU3 (EC718P)。**
 
-| 对比维度 | LuatOS (推荐) | AT 固件 (备选) |
+| 对比维度 | LuatOS-SoC (推荐) | AT 固件 (备选) |
 |---------|--------------|---------------|
 | 出厂状态 | ✅ 预装，无需烧录 | ❌ 需手动烧录 AT 固件 |
 | MQTT 实现 | Lua socket 库 (灵活) | AT+MQTT* 指令集 (受限) |
-| 主控架构 | Air780EG 单芯片 | 需外挂 MCU (ESP32-S3) |
+| 主控架构 | EC718P DTU 单芯片 | 需外挂 MCU (ESP32-S3) |
 | 事件驱动 | ✅ 原生支持 | ❌ AT 轮询，实时性差 |
 | PSM 深度睡眠 | ✅ LuatOS API 原生支持 | AT+CPSMS 配置 |
 | 固件生态 | 合宙主力维护 | 部分高级功能不可用 |
 | 开发效率 | 逻辑翻译 C→Lua | 仅发送 AT 命令 |
 | 社区支持 | 活跃 (LuatOS 社区) | 一般 |
 
-**最终决策: 采用方案 A — LuatOS 固件方案**
+**最终决策: 采用方案 A — LuatOS-SoC 固件方案 (EC718P)**
 
 迁移路径:
 ```
@@ -277,11 +278,11 @@ Phase 3: 联调测试 + 省电优化 (1 周)
 
 ---
 
-## 四、迁移策略 (LuatOS 方案)
+## 四、迁移策略 (LuatOS-SoC 方案)
 
-### 已确认方案: C/ESP-IDF → LuatOS (Air780EG 单芯片)
+### 已确认方案: C/ESP-IDF → LuatOS-SoC (YED DTU3 / EC718P 单芯片)
 
-Air780EG 出厂预装 LuatOS 固件，且 EC618 是合宙主力维护平台。
+YED DTU3 出厂预装 LuatOS-SoC V1003 固件，且 EC718P 是移芯新一代 Cat.1 bis 平台。
 采用 LuatOS 单芯片方案，省去 ESP32-S3 外挂 MCU。
 
 ### AT 指令快速验证脚本
@@ -307,10 +308,9 @@ python3 ~/projects/keepsafe/scripts/test_at.py --list
 
 ### LuatOS 开发资源
 
-- 合宙 LuatOS 官方文档: https://docs.openluat.com/
-- Air780EG 产品页: https://docs.openluat.com/air780eg/
-- LuatOS MQTT 库: socket + mqtt 标准库
-- 固件烧录工具: Luatools (合宙官方), 支持固件下载/脚本烧录/日志查看
+- 亿佰特 YED DTU3 产品页: https://www.ebyte.com/
+- EC718P LuatOS 文档: https://docs.openluat.com/
+- 固件烧录工具: Luatools (合宙官方) 或 亿佰特 DTU配置工具, 支持固件下载/脚本烧录/日志查看
 
 ---
 

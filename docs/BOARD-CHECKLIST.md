@@ -1,9 +1,10 @@
 # KeepSafe 开发板到货准备清单
 
-> 版本: v1.0
-> 日期: 2026-06-07
-> 硬件: 合宙 Air780EG 开发板 (EC618 内核)
-> 固件方案: LuatOS (出厂默认, 推荐)
+> 版本: v2.0
+> 日期: 2026-06-10
+> 硬件: YED DTU3 (EC718P-M100PG 内核, 非 EC618)
+> 固件方案: LuatOS-SoC V1003 (出厂默认)
+> 厂商: 亿佰特 (Ebyte)
 
 ---
 
@@ -11,7 +12,7 @@
 
 ### 1.1 包装内容物核对
 
-- [ ] Air780EG 开发板本体 ×1
+- [ ] YED DTU3 设备本体 ×1
 - [ ] USB Type-C 数据线 ×1 (部分套餐含)
 - [ ] 4G 天线 (IPEX-1 接口, FPC 或棒状) ×1
 - [ ] GPS 天线 (IPEX-1 接口, 部分套餐含)
@@ -54,7 +55,7 @@
 
 ## 二、串口驱动安装 (macOS CH340/CH343)
 
-Air780EG 开发板集成 CH340 或 CH343 USB 转串口芯片。macOS 需安装对应驱动。
+YED DTU3 开发板集成 CH340 或 CH343 USB 转串口芯片。macOS 需安装对应驱动。
 
 ### 2.1 检查当前驱动状态
 
@@ -90,7 +91,7 @@ ls -la /dev/cu.*usbserial* /dev/cu.*wchusbserial*
 # /dev/cu.wchusbserialXXXX (CH340 旧版驱动)
 # /dev/cu.usbmodemXXXX     (部分板载 USB-Serial)
 
-# Air780EG 开发板 Type-C 直连 macOS 常见显示:
+# YED DTU3 开发板 Type-C 直连 macOS 常见显示:
 # /dev/cu.usbserial-110  或  /dev/cu.wchusbserial110
 ```
 
@@ -112,7 +113,7 @@ ls -la /dev/cu.*usbserial* /dev/cu.*wchusbserial*
 # 检查 pyserial 依赖
 pip3 install pyserial
 
-# 自动检测 Air780EG 串口 + 基础 AT 测试
+# 自动检测 YED DTU3 串口 + 基础 AT 测试
 python3 ~/projects/keepsafe/scripts/test_at.py
 
 # 完整测试套件 (SIM卡/网络注册/固件版本/IMEI/运营商)
@@ -125,7 +126,7 @@ python3 ~/projects/keepsafe/scripts/test_at.py --list
 ### 3.2 手动 AT 指令验证 (备用)
 
 ```bash
-# 连接串口 (115200 8N1, Air780EG 默认波特率)
+# 连接串口 (115200 8N1, YED DTU3 默认波特率)
 screen /dev/cu.usbserial-XXXX 115200
 # 或使用 minicom / picocom 等终端工具
 ```
@@ -145,10 +146,10 @@ screen /dev/cu.usbserial-XXXX 115200
 
 | AT+CGMR 返回值 | 类型 | MQTT 方案 |
 |-----------------|------|-----------|
-| `LuatOS-SoC_VXXXX_EC618` | LuatOS | Lua socket 实现 MQTT |
-| `AirM2M_780EG_VXXXX_LTE_AT` | AT 固件 | AT+MQTTCONNCFG 等指令集 |
+| `LuatOS-SoC_VXXXX_EC718P` | LuatOS-SoC | Lua socket 实现 MQTT |
+| `AirM2M_EC718P_VXXXX_LTE_AT` | AT 固件 | AT+MQTTCONNCFG 等指令集 |
 
-> 出厂默认 LuatOS, 本项目推荐使用 LuatOS 方案。
+> **重要**: YED DTU3 使用 EC718P 芯片, 非 EC618。出厂默认 LuatOS-SoC V1003, 本项目推荐使用 LuatOS 透传方案。
 
 ### 3.4 测试通过标准
 
@@ -165,9 +166,9 @@ screen /dev/cu.usbserial-XXXX 115200
 
 ### 4.1 烧录前确认
 
-- [ ] 开发板已通过 Type-C 连接到电脑
+- [ ] DTU 已通过 Type-C 连接到电脑
 - [ ] CH340/CH343 驱动已安装并识别串口
-- [ ] 确定烧录目标: LuatOS 固件 (.soc 文件) 或 Lua 脚本 (.lua / .luac)
+- [ ] 确定烧录目标: LuatOS-SoC 固件 (.soc 文件) 或 Lua 脚本 (.lua / .luac)
 
 ### 4.2 安装 Luatools (合宙官方烧录工具)
 
@@ -180,13 +181,13 @@ screen /dev/cu.usbserial-XXXX 115200
 # 首次运行需在 系统偏好设置 → 安全性与隐私 中允许运行
 ```
 
-### 4.3 Air780EG 固件烧录 (LuatOS 完整固件)
+### 4.3 YED DTU3 固件烧录 (LuatOS-SoC 完整固件)
 
 ```
 1. 打开 Luatools
-2. 选择模块: Air780EG
+2. 选择模块: EC718P (或 Air780EG 兼容模式)
 3. 点击"下载固件":
-   - 选择 LuatOS 固件版本 (推荐最新 Release)
+   - 选择 LuatOS-SoC 固件版本 (推荐 V1003+)
    - 或使用本地 .soc 文件
 4. 点击"下载脚本":
    - 选择项目 Lua 脚本目录
@@ -195,7 +196,7 @@ screen /dev/cu.usbserial-XXXX 115200
 6. 等待进度条完成 → 显示"下载成功"
 ```
 
-### 4.4 Air780EG 进入下载模式
+### 4.4 YED DTU3 进入下载模式
 
 ```
 方式一 (推荐): Luatools 自动触发
@@ -219,21 +220,20 @@ screen /dev/cu.usbserial-XXXX 115200
 # 烧录完成后重新上电, 串口连接:
 screen /dev/cu.usbserial-XXXX 115200
 
-# 上电后应看到 LuatOS 启动日志:
-# LuatOS@Air780EG base 23.xx bsp Vxxxx
+# 上电后应看到 LuatOS-SoC 启动日志:
+# LuatOS-SoC@EC718P base 23.xx bsp V1003
 # ...
 
 # 发送 AT 确认版本:
 AT+CGMR
-# 应返回: LuatOS-SoC_VXXXX_EC618
+# 应返回: LuatOS-SoC_V1003_EC718P
 ```
 
 ### 4.6 烧录文件位置 (项目目录)
 
 ```
-~/projects/keepsafe/code/firmware/    # 现有 ESP32-S3 固件 (计划迁移)
-~/projects/keepsafe/code/luatos/      # LuatOS 脚本 (迁移后)
-```
+~/projects/keepsafe/code/firmware-ec618/  # DTU固件 (EC718P, 非EC618, 目录名保留兼容)
+~/projects/keepsafe/code/firmware-ec618/luatos/  # Lua脚本
 
 ---
 
@@ -379,10 +379,14 @@ AT+CGNSINF           # 定位结果
 1. [ ] 安装 CH340/CH343 驱动
 2. [ ] 插入 SIM 卡 + 天线 + USB 供电
 3. [ ] 运行 `test_at.py --full` 输出测试报告
-4. [ ] 确认固件类型 (LuatOS / AT)
+4. [ ] 确认固件类型 (LuatOS-SoC / AT)
 5. [ ] 4G 联网 + GPS 定位端到端验证
-6. [ ] 根据固件类型确定 MQTT 实现方案
-7. [ ] 更新 HARDWARE.md 和 FIRMWARE-MIGRATION.md 中的采购状态
+6. [ ] **DTU协议适配**: 确认topic映射方案 (A:后端适配 / B:固件配置)
+7. [ ] 更新 HARDWARE.md 和 FIRMWARE-MIGRATION.md 中的 DTU 采购状态
+
+---
+
+**重要**: 本清单已适配 YED DTU3 (EC718P 内核, 非 EC618)。所有 Air780EG 相关操作请参考 v1.0 版本。
 
 ---
 

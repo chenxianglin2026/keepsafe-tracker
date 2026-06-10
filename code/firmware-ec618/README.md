@@ -1,9 +1,10 @@
-# KeepSafe EC618 Firmware
+# KeepSafe DTU Firmware (YED DTU3 / EC718P)
 
-> Platform: Air780EG (EC618 core) — 合宙 LTE Cat.1 + GNSS 模组
-> OS: LuatOS (出厂预装, 无需重新烧录)
-> Status: 准备阶段 — 框架搭建完成, 待 SIM 卡到位后硬件验证
-> Date: 2026-06-09
+> Platform: YED DTU3 (EC718P 内核, 非 EC618) — 亿佰特 LTE Cat.1 + GNSS DTU
+> OS: LuatOS-SoC V1003 (出厂预装, 无需重新烧录)
+> Chip: EC718P-M100PG (移芯 Cat.1 bis 通信芯片)
+> Status: 适配阶段 — DTU协议适配中, 框架基于EC618迁移
+> Date: 2026-06-10
 
 ---
 
@@ -28,10 +29,12 @@ firmware-ec618/
 
 | 方案 | 固件类型 | 说明 |
 |------|---------|------|
-| **A (推荐)** | LuatOS | Air780EG 出厂预装, MQTT via Lua socket 库, 单芯片方案 |
+| **A (推荐)** | LuatOS-SoC | YED DTU3 出厂预装 LuatOS-SoC V1003, MQTT via DTU协议/Lua socket 库, 单芯片方案 |
 | B (备选) | AT Firmware | 需手动烧录, MQTT via AT+MQTT* 指令 |
 
-当前框架按方案 A (LuatOS) 构建。AT 方案提供 mqtt_at.py 脚本用于验证/调试。
+当前框架按方案 A (LuatOS) 构建。DTU协议适配中。AT 方案提供 mqtt_at.py 脚本用于验证/调试。
+
+**重要**: YED DTU3 使用 EC718P 芯片, 非 EC618。LuatOS API 兼容但 GPIO 管脚映射不同。
 
 ---
 
@@ -62,9 +65,9 @@ firmware-ec618/
 
 ### 1. 串口连接
 ```bash
-# Air780EG 开发板 Type-C → 电脑 USB
+# YED DTU3 Type-C → 电脑 USB
 ls /dev/cu.*usbmodem*
-# 应显示: /dev/cu.usbmodem0000000000013
+# 应显示: /dev/cu.usbmodemXXXX
 ```
 
 ### 2. AT 基础测试
@@ -80,9 +83,27 @@ python3 ~/projects/keepsafe/code/firmware-ec618/at-scripts/mqtt_at.py \
 
 ### 4. LuatOS 烧录
 ```bash
-# 使用合宙 Luatools 工具烧录脚本到 Air780EG
+# 使用亿佰特 DTU配置工具 或 合宙 Luatools 工具烧录脚本到 YED DTU3
 # 脚本文件: luatos/*.lua
 ```
+
+## DTU协议适配
+
+YED DTU3 自带DTU透传协议, 支持 JSON/MODBUS/自定义格式。适配方案:
+1. **DTU原生协议**: 利用DTU内置JSON上报格式, 后端适配解析
+2. **LuatOS透传**: 禁用DTU协议, 直接用Lua脚本控制MQTT topic和payload
+3. **混合模式**: DTU协议负责注册/心跳, Lua脚本负责业务数据
+
+当前推荐方案2 (LuatOS透传), 保持与EC618代码兼容性, 最大化控制灵活性。
+
+### MQTT Topic映射
+
+DTU默认topic格式 → KeepSafe后端topic格式:
+- `dtu/{device_id}/data` → `keepsafe/v1/{device_id}/location`
+- `dtu/{device_id}/heart` → `keepsafe/v1/{device_id}/heartbeat`
+- `dtu/{device_id}/alarm` → `keepsafe/v1/{device_id}/sos`
+
+详见: `code/firmware-ec618/MQTT-TOPIC-MAP.md`
 
 ---
 

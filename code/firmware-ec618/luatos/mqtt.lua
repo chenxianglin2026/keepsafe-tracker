@@ -1,7 +1,7 @@
 --[[
-  mqtt.lua -- MQTT Client for KeepSafe EC618 (LuatOS)
+  mqtt.lua -- MQTT Client for KeepSafe DTU (LuatOS-SoC)
   Ported from: code/firmware/main/mqtt.c + mqtt.h (ESP32-S3)
-  Platform: Air780EG (EC618 core)
+  Platform: YED DTU3 (EC718P-M100PG, 非 EC618)
 
   Uses LuatOS built-in MQTT library (mqttcore or net extension).
   The MQTT AT command set (AT+MQTTCONNCFG etc.) is NOT available on LuatOS firmware.

@@ -1,15 +1,15 @@
 --[[
-  config.lua -- KeepSafe EC618 Configuration (LuatOS)
+  config.lua -- KeepSafe DTU Configuration (LuatOS-SoC)
   Ported from: code/firmware/main/config.h (ESP32-S3)
-  Platform: Air780EG (EC618 core), LuatOS firmware
-  Date: 2026-06-09
+  Platform: YED DTU3 (EC718P-M100PG, 非 EC618), LuatOS-SoC V1003
+  Date: 2026-06-10
 ]]
 
 -- ======================= Device Identity =======================
 CONFIG = {}
 
 CONFIG.DEVICE_ID       = "KS-XXXXXXXX"    -- {{PLACEHOLDER_DEVICE_ID}}
-CONFIG.FIRMWARE_VERSION = "2.0.0"         -- EC618 firmware gen
+CONFIG.FIRMWARE_VERSION = "2.0.0"         -- EC718P DTU firmware gen
 
 -- ======================= MQTT Broker =======================
 CONFIG.MQTT_HOST       = "43.163.5.90"    -- VPS EMQX
@@ -74,9 +74,8 @@ CONFIG.NET_RECOVERY_DELAY_MS = 5000    -- 5 seconds between recovery attempts
 CONFIG.LED_PULSE_DUTY_MS = 50          -- visibility pulse width
 CONFIG.LED_PULSE_PERIOD_MS = 20000     -- 20ms period
 
--- ======================= GPIO Pins (Air780EG) =======================
--- TBD: mapped after Air780EG pinout confirmation
--- Air780EG typical GPIO mapping (LuatOS):
+-- ======================= GPIO Pins (YED DTU3 / EC718P) =======================
+-- YED DTU3 EC718P pinout (不同于 Air780EG EC618):
 --   GPIO 4  -> I2C SDA (LIS3DH)
 --   GPIO 5  -> I2C SCL (LIS3DH)
 --   GPIO 27 -> LED Blue
@@ -86,6 +85,7 @@ CONFIG.LED_PULSE_PERIOD_MS = 20000     -- 20ms period
 --   GPIO 9  -> Vibration Motor
 --   GPIO 10 -> Battery ADC
 --   GPIO 6  -> LIS3DH INT1 (motion interrupt)
+-- NOTE: EC718P 引脚映射可能与 EC618 有差异, 实际管脚以YED DTU3手册为准
 CONFIG.GPIO = {
     I2C_SDA  = 4,
     I2C_SCL  = 5,

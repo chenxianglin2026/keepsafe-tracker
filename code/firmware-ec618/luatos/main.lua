@@ -1,7 +1,7 @@
 --[[
-  main.lua -- KeepSafe EC618 主入口 + 状态机主循环 (LuatOS)
+  main.lua -- KeepSafe DTU 主入口 + 状态机主循环 (LuatOS-SoC)
   Ported from: code/firmware/main/main.c (ESP32-S3)
-  Platform: Air780EG (EC618 core)
+  Platform: YED DTU3 (EC718P-M100PG, 非 EC618)
 
   State machine:
     STATIONARY -> MOVING -> JUST_STOPPED -> STATIONARY
@@ -337,7 +337,7 @@ end
 -- ======================= Main Loop =======================
 
 local function main_loop()
-    log.info("KEEPSAFE", string.format("KeepSafe EC618 starting, device=%s, fw=%s",
+    log.info("KEEPSAFE", string.format("KeepSafe DTU starting, device=%s, fw=%s",
         CONFIG.DEVICE_ID, CONFIG.FIRMWARE_VERSION))
 
     -- 1. Initialize GPS
