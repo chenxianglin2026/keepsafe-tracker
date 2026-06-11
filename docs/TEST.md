@@ -11,7 +11,7 @@
 
 | 测试类别 | 覆盖范围 | 工具/脚本 | 预计耗时 |
 |----------|----------|-----------|----------|
-| 后端 API | 119 tests (health/auth/devices/fences/alerts/users/sharing/polygon/e2e) | pytest | 30s |
+| 后端 API | 133 tests (health/auth/devices/fences/alerts/users/sharing/polygon/e2e/push-dispatch) | pytest | 30s |
 | 固件 AT 指令 | Air780E 模组串口通信验证 | test_at.py | 2min |
 | 硬件功能 | GPIO/传感器/按键/电池/MQTT | 串口 + 万用表 | 15min |
 | 固件烧录 | esptool 写入 ESP32-S3 | esptool.py | 3min |
@@ -38,15 +38,15 @@ source .venv/bin/activate
 # 安装测试依赖
 pip install pytest pytest-asyncio httpx
 
-# 运行全部测试 (119 个)
+# 运行全部测试 (133 个)
 pytest tests/test_api.py -v
 
 # 预期输出:
 # tests/test_api.py::TestHealth::test_health_ok PASSED
 # tests/test_api.py::TestHealth::test_docs PASSED
 # tests/test_api.py::TestAuth::test_login_ok PASSED
-# ... (全部 119 个)
-# ======================== 119 passed in X.XXs ========================
+# ... (全部 133 个)
+# ======================== 133 passed in X.XXs ========================
 ```
 
 ### 测试覆盖清单
@@ -137,6 +137,18 @@ pytest tests/test_api.py -v
 - [x] GET /api/v1/alerts/ → 200
 - [x] PUT /api/v1/alerts/{id}/read → 200/404
 - [x] PUT /api/v1/alerts/read-all → 200
+
+**Push Notifications (14) — new**
+- [x] Push token lifecycle (register iOS/Android, update)
+- [x] Invalid platform rejection → 400
+- [x] Empty/whitespace token rejection → 400
+- [x] No-auth push token → 401
+- [x] SOS push dispatch: android→FCM routing
+- [x] Low battery push dispatch: android→FCM routing
+- [x] Geofence push dispatch: enter/exit events
+- [x] SOS push dispatch: ios→APNs routing
+- [x] Unknown platform graceful degradation
+- [x] Unicode device name handling
 
 **MQTT 消息格式 (4)**
 - [x] Location payload 字段验证

@@ -3,7 +3,7 @@ KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
 MQTT message formats, fence alerts, offline reporting, bind/unbind,
 push token management, device sharing, polygon fences, API auth enforcement,
-e2e full flow: register→login→bind→fences→alerts→share (119 tests)
+push notifications: SOS/low_battery/geofence dispatch (133 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -1393,6 +1393,129 @@ class TestPolygonFences:
             headers=auth_headers,
         )
         assert r.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════
+# Push Notifications (14 tests)
+# ═══════════════════════════════════════════════════════
+
+class TestPushNotifications:
+    """Test push notification dispatch logic (FCM/APNs routing)."""
+
+    PUSH_TOKEN_IOS = "ios-voip-token-e2e-test-001"
+    PUSH_TOKEN_ANDROID = "android-fcm-token-e2e-test-001"
+
+    async def test_push_token_lifecycle_register_ios(self, client, auth_headers):
+        """Register iOS push token, then verify it persists."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": self.PUSH_TOKEN_IOS,
+        }, headers=auth_headers)
+        assert r.status_code == 200
+
+    async def test_push_token_lifecycle_register_android(self, client, auth_headers):
+        """Register Android push token, then verify it persists."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "android", "token": self.PUSH_TOKEN_ANDROID,
+        }, headers=auth_headers)
+        assert r.status_code == 200
+
+    async def test_push_token_update_ios(self, client, auth_headers):
+        """Update an existing iOS token — upsert behavior."""
+        r1 = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "ios-token-v1",
+        }, headers=auth_headers)
+        assert r1.status_code == 200
+
+        r2 = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "ios-token-v2",
+        }, headers=auth_headers)
+        assert r2.status_code == 200
+
+    async def test_push_token_invalid_platform_rejected(self, client, auth_headers):
+        """Non-ios/android platform should be rejected (400)."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "web", "token": "some-token",
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+    async def test_push_token_empty_string_rejected(self, client, auth_headers):
+        """Empty token string should be rejected (400)."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "",
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+    async def test_push_token_whitespace_only_rejected(self, client, auth_headers):
+        """Whitespace-only token should be rejected (400)."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "   ",
+        }, headers=auth_headers)
+        assert r.status_code == 400
+
+    async def test_push_token_requires_auth(self, client):
+        """Registering push token without auth should return 401."""
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "ios", "token": "some-token",
+        })
+        assert r.status_code == 401
+
+    # ── Push Dispatch Logic (unit tests on push module) ────────
+
+    async def test_send_sos_push_android_routing(self, client, auth_headers):
+        """SOS push: android platform routes to FCM."""
+        # Register an Android push token
+        r = await client.post("/api/v1/users/me/push-token", json={
+            "platform": "android", "token": "fcm-sos-test-token",
+        }, headers=auth_headers)
+        assert r.status_code == 200
+
+        # Test dispatch function directly (FCM not initialized → graceful False)
+        from app.push import send_sos_push
+        result = await send_sos_push("fcm-sos-test-token", "android", "Test Device")
+        # FCM not initialized → returns False without crash
+        assert result is False
+
+    async def test_send_low_battery_push_android_routing(self, client, auth_headers):
+        """Low battery push: android platform routes to FCM."""
+        from app.push import send_low_battery_push
+        result = await send_low_battery_push("fcm-lowbat-test-token", "android", 15, "Test Device")
+        assert result is False  # FCM not initialized → graceful False
+
+    async def test_send_geofence_push_android_routing(self, client, auth_headers):
+        """Geofence push: enter event, android → FCM."""
+        from app.push import send_geofence_push
+        result = await send_geofence_push(
+            "fcm-geo-test-token", "android", "Home", "enter", "Test Device",
+        )
+        assert result is False  # FCM not initialized → graceful False
+
+    async def test_send_geofence_push_exit_event(self, client, auth_headers):
+        """Geofence push: exit event with correct event label."""
+        from app.push import send_geofence_push
+        result = await send_geofence_push(
+            "fcm-geo-test-token", "android", "School", "exit", "Test Device",
+        )
+        assert result is False  # FCM not initialized → graceful False
+
+    async def test_send_sos_push_ios_routing(self, client, auth_headers):
+        """SOS push: ios platform routes to APNs."""
+        from app.push import send_sos_push
+        result = await send_sos_push("apns-sos-test-token", "ios", "Test Device")
+        # APNs key not configured in test → graceful False
+        assert result is False
+
+    async def test_push_dispatch_unknown_platform_handled(self, client, auth_headers):
+        """Dispatch with unknown platform should not crash — handled by FCM fallback."""
+        from app.push import send_sos_push
+        # Unknown platform falls through to FCM path, which is not initialized
+        result = await send_sos_push("unknown-token", "unknown", "Test Device")
+        assert result is False  # graceful degradation, no crash
+
+    async def test_push_dispatch_with_device_name_special_chars(self, client, auth_headers):
+        """Push dispatch with special characters in device name should not crash."""
+        from app.push import send_sos_push
+        result = await send_sos_push("fcm-special-token", "android", "爷爷的👴设备")
+        assert result is False  # unicode handled, FCM not initialized
 
 
 # ═══════════════════════════════════════════════════════

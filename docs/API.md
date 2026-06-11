@@ -471,8 +471,8 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 cd ~/projects/keepsafe/code/backend
 source .venv/bin/activate
 pytest tests/test_api.py -v
-# 当前: 119 tests (2026-06-10)
-# 覆盖: health/auth/devices/fences(alerts)/users/push/sharing/polygon/e2e
+# 当前: 133 tests (2026-06-11)
+# 覆盖: health/auth/devices/fences/alerts/users/push/tokens/sharing/polygon/e2e/push-dispatch
 ```
 
 ### E2E 完整流程测试
