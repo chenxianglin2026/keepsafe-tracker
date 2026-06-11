@@ -3,5 +3,7 @@
   "navigationBarTextStyle": "white",
   "navigationBarTitleText": "SOS 告警详情",
   "backgroundColor": "#0F0F23",
-  "usingComponents": {}
+  "usingComponents": {
+    "map-locator": "../../components/map-locator/map-locator"
+  }
 }

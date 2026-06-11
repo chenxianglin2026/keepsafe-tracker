@@ -1,4 +1,4 @@
-/** SOS 告警详情页样式 */
+/** SOS 告警详情页样式 (增强版) */
 
 .page-sos {
   min-height: 100vh;
@@ -24,8 +24,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 32rpx;
-  background: linear-gradient(135deg, rgba(255,71,87,0.2), rgba(255,71,87,0.05));
-  border-bottom: 2rpx solid rgba(255,71,87,0.15);
+  background: linear-gradient(135deg, rgba(255,71,87,0.25), rgba(255,71,87,0.05));
+  border-bottom: 2rpx solid rgba(255,71,87,0.2);
 }
 
 .sos-badge {
@@ -37,6 +37,37 @@
 .sos-time {
   font-size: 24rpx;
   color: var(--text-muted);
+}
+
+/* ── 追踪状态栏 ──────────────────────────────────── */
+
+.tracking-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  background: rgba(79, 172, 254, 0.1);
+  border-bottom: 1rpx solid rgba(79, 172, 254, 0.15);
+}
+
+.tracking-pulse {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #4FACFE;
+  box-shadow: 0 0 12rpx rgba(79, 172, 254, 0.6);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.6); }
+}
+
+.tracking-text {
+  font-size: 24rpx;
+  color: #4FACFE;
 }
 
 /* 设备信息卡片 */
@@ -71,6 +102,21 @@
   font-size: 28rpx;
   color: var(--text-primary);
   text-align: right;
+}
+
+.info-value.mono {
+  font-family: 'Courier New', monospace;
+  font-size: 24rpx;
+}
+
+.info-value.addr {
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.info-value.highlight {
+  color: #FF4757;
+  font-weight: 600;
 }
 
 .battery-row {
@@ -110,17 +156,85 @@
   font-size: 32rpx;
 }
 
+/* 追踪按钮 */
+.btn-tracking {
+  height: 80rpx;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  background: rgba(79, 172, 254, 0.1);
+  border: 2rpx solid rgba(79, 172, 254, 0.3);
+  color: #4FACFE;
+}
+
+.btn-tracking.active {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: rgba(255, 71, 87, 0.3);
+  color: #FF4757;
+}
+
+.btn-tracking:active {
+  opacity: 0.7;
+}
+
+.action-row {
+  display: flex;
+  gap: 16rpx;
+}
+
 .nav-btn {
-  height: 88rpx;
+  flex: 1;
+  height: 80rpx;
   border-color: var(--primary);
   color: var(--primary);
 }
 
 .ack-btn {
+  flex: 1;
   height: 80rpx;
   border-color: var(--success);
   color: var(--success);
   font-size: 28rpx;
+}
+
+/* ── 紧急号码快捷拨号 ─────────────────────────────── */
+
+.emergency-contacts {
+  display: flex;
+  justify-content: space-evenly;
+  padding: 20rpx 24rpx;
+  gap: 16rpx;
+}
+
+.contact-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 24rpx 16rpx;
+  background: var(--bg-card);
+  border-radius: 20rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.contact-card:active {
+  background: rgba(255, 71, 87, 0.08);
+  border-color: rgba(255, 71, 87, 0.25);
+}
+
+.contact-icon {
+  font-size: 44rpx;
+  line-height: 1;
+}
+
+.contact-label {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* 提示 */

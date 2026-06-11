@@ -1,18 +1,16 @@
-<!-- SOS 告警详情页 -->
+<!-- SOS 告警详情页 (增强版) -->
 <view class="page-sos">
 
-  <!-- 地图区域 -->
+  <!-- 地图区域 (使用 map-locator 组件) -->
   <view class="map-wrap">
-    <map
-      id="sosMap"
-      class="map"
+    <map-locator
+      id="sosMapLocator"
       latitude="{{latitude}}"
       longitude="{{longitude}}"
-      scale="16"
+      scale="{{scale}}"
       markers="{{markers}}"
-      show-location="{{true}}"
-      enable-zoom="{{true}}"
-      enable-scroll="{{true}}"
+      show-zoom="{{true}}"
+      bind:markertap="onMapMarkerTap"
     />
   </view>
 
@@ -20,6 +18,12 @@
   <view class="sos-banner">
     <view class="sos-badge">🆘 SOS 求助</view>
     <text class="sos-time">{{timeText}}</text>
+  </view>
+
+  <!-- 追踪状态栏 -->
+  <view class="tracking-bar" wx:if="{{tracking}}">
+    <view class="tracking-pulse"></view>
+    <text class="tracking-text">实时追踪中 — 每 10 秒刷新位置</text>
   </view>
 
   <!-- 设备信息卡片 -->
@@ -30,11 +34,11 @@
     </view>
     <view class="info-row">
       <text class="info-label">设备 ID</text>
-      <text class="info-value">{{deviceId}}</text>
+      <text class="info-value mono">{{deviceId}}</text>
     </view>
     <view class="info-row">
       <text class="info-label">位置</text>
-      <text class="info-value">{{address || '获取位置中...'}}</text>
+      <text class="info-value addr">{{address || '获取位置中...'}}</text>
     </view>
     <view class="info-row">
       <text class="info-label">电量</text>
@@ -45,18 +49,47 @@
         <text class="info-value">{{battery}}%</text>
       </view>
     </view>
+    <view class="info-row" wx:if="{{sosEventsCount > 0}}">
+      <text class="info-label">SOS 历史</text>
+      <text class="info-value highlight">共 {{sosEventsCount}} 次</text>
+    </view>
   </view>
 
-  <!-- 操作按钮 -->
+  <!-- 操作按钮组 -->
   <view class="action-section">
     <view class="btn-primary call-btn" bindtap="onCallDevice">
-      <text>📞 联系设备使用者</text>
+      <text>📞 紧急联系</text>
     </view>
-    <view class="btn-outline nav-btn" bindtap="onNavigate">
-      <text>🗺️ 导航前往</text>
+
+    <!-- 追踪按钮 -->
+    <view class="btn-tracking {{tracking ? 'active' : ''}}" bindtap="{{tracking ? 'onStopTracking' : 'onStartTracking'}}">
+      <text wx:if="{{!tracking}}">📍 开始追踪</text>
+      <text wx:else>⏹️ 停止追踪</text>
     </view>
-    <view class="btn-outline ack-btn" bindtap="onAcknowledge">
-      <text>✓ 确认收到</text>
+
+    <view class="action-row">
+      <view class="btn-outline nav-btn" bindtap="onNavigate">
+        <text>🗺️ 导航前往</text>
+      </view>
+      <view class="btn-outline ack-btn" bindtap="onAcknowledge">
+        <text>✓ 确认收到</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 紧急号码快捷拨号 -->
+  <view class="emergency-contacts">
+    <view class="contact-card" bindtap="onCallPolice">
+      <text class="contact-icon">🚔</text>
+      <text class="contact-label">报警 110</text>
+    </view>
+    <view class="contact-card" bindtap="onCallAmbulance">
+      <text class="contact-icon">🚑</text>
+      <text class="contact-label">急救 120</text>
+    </view>
+    <view class="contact-card" bindtap="onCallFire">
+      <text class="contact-icon">🚒</text>
+      <text class="contact-label">火警 119</text>
     </view>
   </view>
 

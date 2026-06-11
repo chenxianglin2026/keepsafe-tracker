@@ -1,0 +1,77 @@
+/** map-locator 组件样式 */
+
+.map-locator-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.map-locator-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── 缩放控件 (右下) ───────────────────────────── */
+
+.zoom-controls {
+  position: absolute;
+  right: 20rpx;
+  bottom: 160rpx;
+  width: 72rpx;
+  background: #1A1A2E;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(79, 172, 254, 0.25);
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
+}
+
+.zoom-btn {
+  width: 72rpx;
+  height: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1A1A2E;
+}
+
+.zoom-btn:active {
+  background: rgba(79, 172, 254, 0.15);
+}
+
+.zoom-icon {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #4FACFE;
+  line-height: 1;
+}
+
+.zoom-divider {
+  height: 1rpx;
+  background: rgba(79, 172, 254, 0.15);
+}
+
+/* ── 我的位置按钮 (左下) ────────────────────────── */
+
+.locate-btn {
+  position: absolute;
+  left: 20rpx;
+  bottom: 160rpx;
+  width: 80rpx;
+  height: 80rpx;
+  background: #1A1A2E;
+  border-radius: 50%;
+  border: 1rpx solid rgba(79, 172, 254, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
+}
+
+.locate-btn:active {
+  background: rgba(79, 172, 254, 0.15);
+}
+
+.locate-icon {
+  font-size: 36rpx;
+  line-height: 1;
+}

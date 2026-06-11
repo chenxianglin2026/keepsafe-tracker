@@ -1,0 +1,34 @@
+<!-- map-locator 组件模板 -->
+<view class="map-locator-container">
+  <!-- 地图 -->
+  <map
+    id="mapLocator"
+    class="map-locator-map"
+    latitude="{{latitude}}"
+    longitude="{{longitude}}"
+    scale="{{scale}}"
+    markers="{{markers}}"
+    show-location="{{true}}"
+    enable-zoom="{{true}}"
+    enable-scroll="{{true}}"
+    bindmarkertap="onMarkerTap"
+    bindregionchange="onRegionChange"
+    bindtap="onMapTap"
+  />
+
+  <!-- 缩放控件 (右下) -->
+  <view class="zoom-controls" wx:if="{{showZoom}}">
+    <view class="zoom-btn" bindtap="onZoomIn">
+      <text class="zoom-icon">+</text>
+    </view>
+    <view class="zoom-divider"></view>
+    <view class="zoom-btn" bindtap="onZoomOut">
+      <text class="zoom-icon">−</text>
+    </view>
+  </view>
+
+  <!-- 我的位置按钮 (左下) -->
+  <view class="locate-btn" bindtap="onLocateMe">
+    <text class="locate-icon">📍</text>
+  </view>
+</view>
