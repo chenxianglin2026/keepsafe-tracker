@@ -4,5 +4,7 @@
     "device-card": "../../components/device-card/device-card",
     "fence-picker": "../../components/fence-picker/fence-picker"
   },
-  "disableScroll": true
+  "disableScroll": true,
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
 }

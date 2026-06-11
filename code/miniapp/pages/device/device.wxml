@@ -1,0 +1,99 @@
+<!-- 设备详情页面 -->
+<view class="page-device">
+
+  <!-- 加载状态 -->
+  <view class="loading-overlay" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载设备信息...</text>
+  </view>
+
+  <block wx:if="{{!loading}}">
+
+    <!-- 设备状态卡片 -->
+    <view class="card device-card">
+      <view class="card-header">
+        <text class="device-name">{{deviceInfo.nickname || deviceInfo.device_id || '设备'}}</text>
+        <view class="status-tag tag-{{deviceStatus.online ? 'success' : 'danger'}}">
+          <text>{{deviceStatus.online ? '在线' : '离线'}}</text>
+        </view>
+      </view>
+      <view class="info-grid">
+        <view class="info-item">
+          <text class="info-label">电量</text>
+          <text class="info-value" style="color: {{batteryColor}}">{{deviceStatus.battery != null ? deviceStatus.battery + '%' : '--'}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">信号</text>
+          <text class="info-value">{{deviceStatus.rssi != null ? deviceStatus.rssi + 'dBm' : '--'}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">充电</text>
+          <text class="info-value">{{deviceStatus.charging ? '是' : '否'}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">最后上线</text>
+          <text class="info-value time">{{lastSeenText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 地图组件 -->
+    <view class="map-section">
+      <view class="section-title">当前位置</view>
+      <view class="map-container">
+        <map
+          id="deviceMap"
+          class="map"
+          latitude="{{mapCenter.latitude}}"
+          longitude="{{mapCenter.longitude}}"
+          scale="{{mapScale}}"
+          markers="{{markers}}"
+          show-location="{{true}}"
+          enable-zoom="{{true}}"
+          enable-scroll="{{true}}"
+        />
+      </view>
+      <view class="map-actions">
+        <view class="btn-outline map-btn" bindtap="onNavigate">
+          <text>🧭 导航到此</text>
+        </view>
+        <view class="btn-outline map-btn" bindtap="onRefreshLocation">
+          <text>🔄 刷新位置</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- SOS 事件列表 -->
+    <view class="section">
+      <view class="section-title">SOS 告警记录</view>
+      <view wx:if="{{sosEvents.length > 0}}" class="sos-list">
+        <view class="sos-item" wx:for="{{sosEvents}}" wx:key="id">
+          <view class="sos-icon">🆘</view>
+          <view class="sos-info">
+            <text class="sos-time">{{formatTime(item.ts)}}</text>
+            <text class="sos-detail" wx:if="{{item.lat}}">
+              位置: {{item.lat.toFixed(4)}}, {{item.lng.toFixed(4)}}
+            </text>
+            <text class="sos-detail" wx:if="{{item.battery != null}}">
+              电量: {{item.battery}}%
+            </text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-inline">
+        <text class="empty-text">暂无 SOS 告警记录</text>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-section">
+      <view class="btn-primary" bindtap="onSetFence">
+        <text>⭕ 设置围栏</text>
+      </view>
+      <view class="btn-danger" bindtap="onUnbind">
+        <text>🔓 解绑设备</text>
+      </view>
+    </view>
+
+  </block>
+</view>

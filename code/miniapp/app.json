@@ -4,7 +4,10 @@
     "pages/index/index",
     "pages/alerts/alert",
     "pages/sos-detail/sos-detail",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/device/device",
+    "pages/fence/fence",
+    "pages/bind/bind"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1A1A2E",

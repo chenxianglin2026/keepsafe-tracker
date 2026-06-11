@@ -498,6 +498,19 @@ Page({
   },
 
   /**
+   * 下拉刷新
+   */
+  onPullDownRefresh() {
+    Promise.all([
+      this.fetchDevices(),
+      this.fetchUnreadAlertCount()
+    ]).finally(() => {
+      wx.stopPullDownRefresh()
+      wx.showToast({ title: '已刷新', icon: 'success', duration: 1000 })
+    })
+  },
+
+  /**
    * 分享设置
    */
   onShareAppMessage() {

@@ -1,0 +1,230 @@
+/** 围栏管理页面样式 */
+
+.page-fence {
+  min-height: 100vh;
+  padding: 24rpx;
+  padding-bottom: calc(120rpx + var(--safe-bottom));
+}
+
+/* 加载覆盖 */
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 24rpx;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+/* 设备标识 */
+.device-badge {
+  background: var(--bg-surface);
+  border-radius: 12rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 24rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 围栏列表 */
+.fence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.fence-item.card {
+  margin: 0;
+  padding: 24rpx;
+}
+
+.fence-header {
+  margin-bottom: 16rpx;
+}
+
+.fence-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fence-name {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.fence-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.fence-detail {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.fence-actions {
+  display: flex;
+  gap: 32rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border-color);
+}
+
+.fence-action-link {
+  font-size: 26rpx;
+  color: var(--primary);
+}
+
+.fence-action-link.danger {
+  color: var(--danger);
+}
+
+/* 创建区域 */
+.create-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  padding-bottom: calc(24rpx + var(--safe-bottom));
+  background: var(--bg-dark);
+  border-top: 1rpx solid var(--border-color);
+  z-index: 10;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 100rpx 48rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 20rpx;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  font-size: 26rpx;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* 编辑弹窗 */
+.fence-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.fence-panel {
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + var(--safe-bottom));
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.panel-title {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.panel-close {
+  font-size: 36rpx;
+  color: var(--text-muted);
+  padding: 8rpx;
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+.location-picker {
+  height: 88rpx;
+  background: var(--bg-surface);
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  display: flex;
+  align-items: center;
+  border: 2rpx solid var(--border-color);
+  font-size: 28rpx;
+  color: var(--text-primary);
+}
+
+.location-picker .placeholder {
+  color: var(--text-muted);
+}
+
+.radius-options {
+  display: flex;
+  gap: 12rpx;
+}
+
+.radius-chip {
+  flex: 1;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+}
+
+.radius-chip.active {
+  background: rgba(79, 172, 254, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.panel-footer {
+  margin-top: 32rpx;
+}

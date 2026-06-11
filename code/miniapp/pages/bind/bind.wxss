@@ -1,0 +1,97 @@
+/** 设备绑定页面样式 */
+
+.page-bind {
+  min-height: 100vh;
+  padding: 60rpx 48rpx 40rpx;
+}
+
+/* 标题区 */
+.header-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 60rpx;
+}
+
+.header-icon {
+  font-size: 100rpx;
+  margin-bottom: 24rpx;
+}
+
+.header-title {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12rpx;
+}
+
+.header-desc {
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+/* 表单 */
+.form-section {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.code-input {
+  font-size: 36rpx;
+  letter-spacing: 8rpx;
+  text-align: center;
+  font-weight: 600;
+}
+
+.bind-btn {
+  height: 96rpx;
+  margin-top: 40rpx;
+  font-size: 34rpx;
+  border-radius: 48rpx;
+}
+
+/* 说明区域 */
+.help-section {
+  margin-top: 80rpx;
+  padding: 32rpx;
+  background: var(--bg-surface);
+  border-radius: 16rpx;
+  border: 1rpx solid var(--border-color);
+}
+
+.help-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.help-item {
+  font-size: 24rpx;
+  color: var(--text-muted);
+  line-height: 2;
+  display: block;
+}
+
+/* 加载 */
+.loading-spinner.small {
+  width: 36rpx;
+  height: 36rpx;
+  border-width: 3rpx;
+}
+
+.loading-spinner.white {
+  border-color: rgba(255,255,255,0.3);
+  border-top-color: white;
+}

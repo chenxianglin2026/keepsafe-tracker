@@ -19,7 +19,7 @@
   <!-- 设备管理区 -->
   <view class="section-header">
     <text class="section-title">我的设备</text>
-    <text class="section-action" bindtap="onBindDevice">+ 添加设备</text>
+    <text class="section-action" bindtap="onAddDevice">+ 添加设备</text>
   </view>
 
   <view class="device-section" wx:if="{{deviceList.length > 0}}">
@@ -31,6 +31,7 @@
       bind:locate="onLocateDevice"
       bind:fence="onFenceDevice"
       bind:share="onShareDevice"
+      bind:tap="onDeviceTap"
     />
   </view>
 

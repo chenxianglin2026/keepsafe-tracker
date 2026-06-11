@@ -1,0 +1,176 @@
+/** 设备详情页面样式 */
+
+.page-device {
+  min-height: 100vh;
+  padding: 24rpx;
+  padding-bottom: calc(24rpx + var(--safe-bottom));
+}
+
+/* 加载覆盖 */
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 24rpx;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+/* 设备状态卡片 */
+.device-card {
+  margin: 0 0 24rpx 0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28rpx;
+}
+
+.device-name {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.status-tag {
+  padding: 6rpx 20rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+/* 信息网格 */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24rpx;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.info-label {
+  font-size: 22rpx;
+  color: var(--text-muted);
+}
+
+.info-value {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-value.time {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+/* 地图区域 */
+.map-section {
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16rpx;
+  padding-left: 8rpx;
+}
+
+.map-container {
+  width: 100%;
+  height: 360rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 1rpx solid var(--border-color);
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.map-btn {
+  flex: 1;
+  height: 72rpx;
+  font-size: 26rpx;
+}
+
+/* SOS 事件 */
+.section {
+  margin-bottom: 24rpx;
+}
+
+.sos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.sos-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  background: var(--bg-surface);
+  border-radius: 12rpx;
+  padding: 20rpx;
+}
+
+.sos-icon {
+  font-size: 36rpx;
+}
+
+.sos-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.sos-time {
+  font-size: 26rpx;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.sos-detail {
+  font-size: 22rpx;
+  color: var(--text-muted);
+}
+
+.empty-inline {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+/* 操作按钮 */
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 32rpx;
+  padding-bottom: 32rpx;
+}
+
+/* 空状态 (复用全局) */

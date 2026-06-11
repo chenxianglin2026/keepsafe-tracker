@@ -1,0 +1,121 @@
+<!-- 围栏管理页面 -->
+<view class="page-fence">
+
+  <!-- 加载状态 -->
+  <view class="loading-overlay" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载围栏...</text>
+  </view>
+
+  <block wx:if="{{!loading}}">
+
+    <!-- 设备信息 -->
+    <view class="device-badge" wx:if="{{deviceNickname}}">
+      <text>设备: {{deviceNickname}}</text>
+    </view>
+
+    <!-- 围栏列表 -->
+    <view class="fence-list" wx:if="{{fenceList.length > 0}}">
+      <view class="fence-item card" wx:for="{{fenceList}}" wx:key="id">
+        <view class="fence-header">
+          <view class="fence-name-row">
+            <text class="fence-name">{{item.name || '未命名围栏'}}</text>
+            <switch
+              checked="{{item.enabled}}"
+              color="#4FACFE"
+              bindchange="onToggleFence"
+              data-id="{{item.id}}"
+              data-enabled="{{item.enabled}}"
+            />
+          </view>
+        </view>
+        <view class="fence-info">
+          <text class="fence-detail">📍 {{item.lat.toFixed(4)}}, {{item.lng.toFixed(4)}}</text>
+          <text class="fence-detail">📏 半径: {{item.radius}}m</text>
+        </view>
+        <view class="fence-actions">
+          <text class="fence-action-link" bindtap="onEditFence" data-item="{{item}}">编辑</text>
+          <text class="fence-action-link danger" bindtap="onDeleteFence" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{fenceList.length === 0}}">
+      <view class="empty-icon">⭕</view>
+      <text class="empty-title">还没有设置围栏</text>
+      <text class="empty-desc">为设备设置安全区域，离开时自动告警</text>
+    </view>
+
+    <!-- 创建围栏按钮 -->
+    <view class="create-section">
+      <view class="btn-primary" bindtap="onCreateFence">
+        <text>+ 创建围栏</text>
+      </view>
+    </view>
+
+  </block>
+
+  <!-- 围栏编辑弹窗 -->
+  <view class="fence-mask" wx:if="{{editVisible}}" catchtouchmove="preventMove">
+    <view class="fence-panel">
+      <view class="panel-header">
+        <text class="panel-title">{{editingId ? '编辑围栏' : '新建围栏'}}</text>
+        <text class="panel-close" bindtap="onEditClose">✕</text>
+      </view>
+      <view class="panel-body">
+        <view class="form-group">
+          <text class="form-label">围栏名称</text>
+          <input
+            class="input-field"
+            placeholder="例：学校范围"
+            placeholder-class="input-placeholder"
+            value="{{editName}}"
+            bindinput="onNameInput"
+            maxlength="20"
+          />
+        </view>
+        <view class="form-group">
+          <text class="form-label">中心位置</text>
+          <view class="location-picker" bindtap="onPickLocation">
+            <text wx:if="{{editLatitude && editLongitude}}">
+              {{editLatitude.toFixed(4)}}, {{editLongitude.toFixed(4)}}
+            </text>
+            <text wx:else class="placeholder">点击选择位置</text>
+          </view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">半径 (米)</text>
+          <view class="radius-options">
+            <view
+              class="radius-chip {{editRadius === 200 ? 'active' : ''}}"
+              data-radius="200"
+              bindtap="onRadiusSelect"
+            >200m</view>
+            <view
+              class="radius-chip {{editRadius === 500 ? 'active' : ''}}"
+              data-radius="500"
+              bindtap="onRadiusSelect"
+            >500m</view>
+            <view
+              class="radius-chip {{editRadius === 1000 ? 'active' : ''}}"
+              data-radius="1000"
+              bindtap="onRadiusSelect"
+            >1km</view>
+            <view
+              class="radius-chip {{editRadius === 3000 ? 'active' : ''}}"
+              data-radius="3000"
+              bindtap="onRadiusSelect"
+            >3km</view>
+          </view>
+        </view>
+      </view>
+      <view class="panel-footer">
+        <view class="btn-primary" bindtap="onSaveFence">
+          <text>{{editingId ? '保存修改' : '创建围栏'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

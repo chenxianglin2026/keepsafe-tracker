@@ -1,0 +1,64 @@
+<!-- 设备绑定页面 -->
+<view class="page-bind">
+
+  <!-- 标题区 -->
+  <view class="header-section">
+    <view class="header-icon">📱</view>
+    <text class="header-title">绑定 KeepSafe 设备</text>
+    <text class="header-desc">输入设备码和密钥以关联设备</text>
+  </view>
+
+  <!-- 表单 -->
+  <view class="form-section">
+    <view class="form-group">
+      <text class="form-label">设备 ID</text>
+      <input
+        class="input-field code-input"
+        type="text"
+        placeholder="例: KS-00000001"
+        placeholder-class="input-placeholder"
+        value="{{deviceId}}"
+        bindinput="onDeviceIdInput"
+        maxlength="16"
+      />
+    </view>
+    <view class="form-group">
+      <text class="form-label">设备密钥</text>
+      <input
+        class="input-field"
+        type="text"
+        placeholder="出厂设备密钥"
+        placeholder-class="input-placeholder"
+        value="{{deviceToken}}"
+        bindinput="onTokenInput"
+        maxlength="64"
+      />
+    </view>
+    <view class="form-group">
+      <text class="form-label">设备昵称 (可选)</text>
+      <input
+        class="input-field"
+        type="text"
+        placeholder="给设备取个名字"
+        placeholder-class="input-placeholder"
+        value="{{nickname}}"
+        bindinput="onNicknameInput"
+        maxlength="12"
+      />
+    </view>
+
+    <view class="btn-primary bind-btn" bindtap="onBind">
+      <text wx:if="{{!binding}}">确认绑定</text>
+      <view class="loading-spinner small white" wx:if="{{binding}}"></view>
+    </view>
+  </view>
+
+  <!-- 说明 -->
+  <view class="help-section">
+    <text class="help-title">如何获取设备码和密钥？</text>
+    <text class="help-item">1. 打开设备包装盒查看标签</text>
+    <text class="help-item">2. 或联系设备管理员获取</text>
+    <text class="help-item">3. 确保设备已开机并联网</text>
+  </view>
+
+</view>

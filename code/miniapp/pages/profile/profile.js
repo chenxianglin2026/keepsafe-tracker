@@ -95,6 +95,25 @@ Page({
   // 设备操作事件
   // ============================================================
 
+  /**
+   * 点击设备卡片 - 跳转设备详情
+   */
+  onDeviceTap(e) {
+    const device = e.detail.device
+    if (device && device.device_id) {
+      wx.navigateTo({
+        url: `/pages/device/device?device_id=${device.device_id}`
+      })
+    }
+  },
+
+  /**
+   * 添加设备 - 跳转绑定页面
+   */
+  onAddDevice() {
+    wx.navigateTo({ url: '/pages/bind/bind' })
+  },
+
   onLocateDevice(e) {
     const device = e.detail.device
     const lat = device.latitude || device.lat
