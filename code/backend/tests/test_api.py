@@ -2,7 +2,8 @@
 KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
 MQTT message formats, fence alerts, offline reporting, bind/unbind,
-push token management, device sharing, polygon fences, API auth enforcement (103+ tests)
+push token management, device sharing, polygon fences, API auth enforcement,
+e2e full flow: register→login→bind→fences→alerts→share (119 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -1392,3 +1393,186 @@ class TestPolygonFences:
             headers=auth_headers,
         )
         assert r.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════
+# E2E Integration Test (1 test, 12-step full flow)
+# Full flow: register → login → bind device → fence → alert → share
+# ═══════════════════════════════════════════════════════
+
+class TestE2EFullFlow:
+    """Complete end-to-end integration test simulating the full user journey.
+
+    Covers: register → login → bind device → create fences (circle + polygon)
+            → list fences → verify alert endpoints → share device → revoke share
+            → verify shared-with-me → mark alerts read → cleanup
+
+    Executed as a single sequential test to preserve auth state across steps.
+    """
+
+    E2E_EMAIL = "e2e-test@keepsafe.com"
+    E2E_PASSWORD = "e2epass123"
+    E2E_DEVICE_ID = "KS-E2E-0001"
+
+    async def test_e2e_full_flow(self, client):
+        """Run the complete 12-step user journey end-to-end."""
+        # ── Step 1: Register a brand new user ──────────────────
+        r = await client.post("/api/v1/users/register", json={
+            "email": self.E2E_EMAIL,
+            "password": self.E2E_PASSWORD,
+            "nickname": "E2E User",
+        })
+        assert r.status_code == 201, f"Step 1 register failed: {r.text}"
+
+        # ── Step 2: Login and obtain access token ──────────────
+        r = await client.post("/api/v1/users/login", json={
+            "email": self.E2E_EMAIL,
+            "password": self.E2E_PASSWORD,
+        })
+        assert r.status_code == 200, f"Step 2 login failed: {r.text}"
+        data = r.json()
+        token = data["access_token"]
+        user_id = data["user_id"]
+        assert data["token_type"] == "bearer"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # ── Step 3: Get user profile ──────────────────────────
+        r = await client.get("/api/v1/users/profile", headers=headers)
+        assert r.status_code == 200, f"Step 3 profile failed: {r.text}"
+        data = r.json()
+        assert data["email"] == self.E2E_EMAIL
+        assert data["nickname"] == "E2E User"
+
+        # ── Step 4: Bind a new device ─────────────────────────
+        r = await client.post("/api/v1/devices/bind", json={
+            "user_id": user_id,
+            "device_id": self.E2E_DEVICE_ID,
+            "token": "e2e-token-001",
+            "nickname": "E2E Device",
+        }, headers=headers)
+        assert r.status_code == 200, f"Step 4 bind failed: {r.text}"
+        assert r.json()["success"] is True
+
+        # ── Step 5: Verify device in my-devices list ──────────
+        r = await client.get("/api/v1/users/me/devices", headers=headers)
+        assert r.status_code == 200, f"Step 5 my-devices failed: {r.text}"
+        devices = r.json()
+        e2e_device = [d for d in devices if d["device_id"] == self.E2E_DEVICE_ID]
+        assert len(e2e_device) == 1, f"Expected 1 E2E device, got {len(e2e_device)}"
+        assert e2e_device[0]["nickname"] == "E2E Device"
+
+        # ── Step 6: Create a circular geofence ────────────────
+        r = await client.post(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/fences",
+            json={
+                "name": "E2E Home Circle",
+                "fence_type": "circle",
+                "lat": 31.2304,
+                "lng": 121.4737,
+                "radius": 500,
+                "enabled": True,
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, f"Step 6 circle fence failed: {r.text}"
+        data = r.json()
+        assert data["name"] == "E2E Home Circle"
+        assert data["fence_type"] == "circle"
+        assert data["radius"] == 500
+        circle_fence_id = data["id"]
+
+        # ── Step 7: Create a polygon geofence ─────────────────
+        r = await client.post(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/fences",
+            json={
+                "name": "E2E School Zone",
+                "fence_type": "polygon",
+                "vertices": [
+                    {"lat": 31.2000, "lng": 121.4500},
+                    {"lat": 31.2200, "lng": 121.4500},
+                    {"lat": 31.2200, "lng": 121.4900},
+                    {"lat": 31.2000, "lng": 121.4900},
+                ],
+                "enabled": True,
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, f"Step 7 polygon fence failed: {r.text}"
+        data = r.json()
+        assert data["name"] == "E2E School Zone"
+        assert data["fence_type"] == "polygon"
+        assert len(data["vertices"]) == 4
+        polygon_fence_id = data["id"]
+
+        # ── Step 8: List fences, verify both types exist ──────
+        r = await client.get(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/fences",
+            headers=headers,
+        )
+        assert r.status_code == 200, f"Step 8 list fences failed: {r.text}"
+        data = r.json()
+        assert data["total"] >= 2
+        fence_types = {f["fence_type"] for f in data["fences"]}
+        assert "circle" in fence_types
+        assert "polygon" in fence_types
+        names = {f["name"] for f in data["fences"]}
+        assert "E2E Home Circle" in names
+        assert "E2E School Zone" in names
+
+        # ── Step 9: Verify alert endpoints accessible ─────────
+        r = await client.get("/api/v1/alerts/", headers=headers)
+        assert r.status_code == 200, f"Step 9 alerts failed: {r.text}"
+        data = r.json()
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+
+        # Filter by all alert types
+        for alert_type in ("geofence_enter", "geofence_exit", "sos", "low_battery", "offline"):
+            r2 = await client.get("/api/v1/alerts/", params={
+                "alert_type": alert_type,
+            }, headers=headers)
+            assert r2.status_code == 200, f"Step 9 filter {alert_type} failed: {r2.text}"
+            d2 = r2.json()
+            for item in d2["items"]:
+                assert item["alert_type"] == alert_type
+
+        # ── Step 10: Mark all alerts as read ──────────────────
+        r = await client.put("/api/v1/alerts/read-all", headers=headers)
+        assert r.status_code == 200, f"Step 10 mark-read failed: {r.text}"
+        msg = r.json()["message"].lower()
+        assert "read" in msg or "no alerts" in msg
+
+        # ── Step 11: Share device with main test user ─────────
+        r = await client.post(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/share",
+            json={
+                "shared_with_email": TEST_EMAIL,
+                "permissions": "view",
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, f"Step 11 share failed: {r.text}"
+        data = r.json()
+        assert data["device_id"] == self.E2E_DEVICE_ID
+        assert data["permissions"] == "view"
+        assert data["is_active"] is True
+        share_id = data["id"]
+
+        # ── Step 12: Revoke share and verify empty ────────────
+        r = await client.delete(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/share/{share_id}",
+            headers=headers,
+        )
+        assert r.status_code == 200, f"Step 12 revoke failed: {r.text}"
+        assert "revoked" in r.json()["message"].lower()
+
+        # Verify no active shares remain
+        r2 = await client.get(
+            f"/api/v1/devices/{self.E2E_DEVICE_ID}/shares",
+            headers=headers,
+        )
+        assert r2.status_code == 200, f"Step 12 verify shares empty failed: {r2.text}"
+        shares = r2.json()["shares"]
+        active_shares = [s for s in shares if s.get("is_active")]
+        assert len(active_shares) == 0

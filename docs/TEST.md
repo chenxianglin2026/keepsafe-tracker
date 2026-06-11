@@ -11,7 +11,7 @@
 
 | 测试类别 | 覆盖范围 | 工具/脚本 | 预计耗时 |
 |----------|----------|-----------|----------|
-| 后端 API | 27 tests (health/auth/devices/fences/alerts/users) | pytest | 30s |
+| 后端 API | 119 tests (health/auth/devices/fences/alerts/users/sharing/polygon/e2e) | pytest | 30s |
 | 固件 AT 指令 | Air780E 模组串口通信验证 | test_at.py | 2min |
 | 硬件功能 | GPIO/传感器/按键/电池/MQTT | 串口 + 万用表 | 15min |
 | 固件烧录 | esptool 写入 ESP32-S3 | esptool.py | 3min |
@@ -38,15 +38,15 @@ source .venv/bin/activate
 # 安装测试依赖
 pip install pytest pytest-asyncio httpx
 
-# 运行全部测试 (27 个)
+# 运行全部测试 (119 个)
 pytest tests/test_api.py -v
 
 # 预期输出:
 # tests/test_api.py::TestHealth::test_health_ok PASSED
 # tests/test_api.py::TestHealth::test_docs PASSED
 # tests/test_api.py::TestAuth::test_login_ok PASSED
-# ... (全部 27 个)
-# ======================== 27 passed in X.XXs ========================
+# ... (全部 119 个)
+# ======================== 119 passed in X.XXs ========================
 ```
 
 ### 测试覆盖清单
@@ -55,42 +55,142 @@ pytest tests/test_api.py -v
 - [x] GET /health → 200, status=ok
 - [x] GET /docs → 200
 
-**Auth (5)**
+**Auth (7)**
 - [x] POST /api/v1/users/login (正确密码) → 200, 返回 token
 - [x] POST /api/v1/users/login (错误密码) → 401
-- [x] POST /api/v1/users/login (不存在用户) → != 200
+- [x] POST /api/v1/users/login (不存在用户) → 401
 - [x] 未认证请求受保护接口 → 401
 - [x] 错误 token 请求受保护接口 → 401
+- [x] 设备认证 (EMQX) allow/deny
+- [x] 设备认证 ACL allow/deny
 
-**Devices (8)**
+**API 鉴权覆盖 (16)**
+- [x] 所有受保护端点拒绝无 token 请求
+- [x] 设备位置/历史/SOS/绑定 无auth → 401
+- [x] 用户 profile/设备列表 无auth → 401
+- [x] 围栏 CRUD 无auth → 401
+- [x] 告警列表/标记已读 无auth → 401
+- [x] 设备分享/撤销/查看 无auth → 401
+
+**Devices (14)**
 - [x] GET /api/v1/devices/{id}/status → 200
 - [x] GET /api/v1/devices/{id}/location → 200/404
 - [x] GET /api/v1/devices/{id}/history → 200, list
 - [x] GET /api/v1/devices/{id}/sos/events → 200, list
 - [x] POST /api/v1/devices/bind (新设备) → 200
+- [x] POST /api/v1/devices/bind (缺少token) → 422
 - [x] POST /api/v1/devices/bind (已存在绑定) → 200
 - [x] POST /api/v1/devices/bind (错误token) → 403
+- [x] POST /api/v1/devices/bind (其他用户) → 403
+- [x] POST /api/v1/devices/bind (无auth) → 401
+- [x] DELETE /api/v1/devices/{id}/bind → 200
+- [x] DELETE 未绑定设备 → 403
 - [x] 访问他人设备 → 403
+- [x] 超长nickname绑定 → 200
 
-**Users (3)**
-- [x] GET /api/v1/users/me → 200/404
-- [x] PUT /api/v1/users/me → 200/404
-- [x] POST /api/v1/users/register → 200/201/400
+**Users (7)**
+- [x] GET /api/v1/users/profile → 200
+- [x] PUT /api/v1/users/profile → 200
+- [x] POST /api/v1/users/register → 201
+- [x] POST /api/v1/users/register (重复邮箱) → 409
+- [x] POST /api/v1/users/register (密码<6位) → 422
+- [x] POST /api/v1/users/register (非法邮箱) → 422
+- [x] GET /api/v1/users/me/devices → 200
 
-**Fences (3)**
-- [x] POST /api/v1/fences → 200/201/404
-- [x] GET /api/v1/fences → 200/404
-- [x] DELETE /api/v1/fences/{id} → 200/404
+**Push Token (7)**
+- [x] 注册 iOS token → 200
+- [x] 注册 Android token → 200
+- [x] 无效平台 → 400
+- [x] 空 token → 400
+- [x] 无auth → 401
+- [x] 更新已有 token (upsert) → 200
+- [x] 纯空格 token → 400
 
-**Alerts (2)**
-- [x] GET /api/v1/alerts → 200/404
+**Fences (6)**
+- [x] POST /api/v1/devices/{id}/fences (圆形) → 201
+- [x] GET /api/v1/devices/{id}/fences → 200
+- [x] GET /api/v1/devices/{id}/fences/{fid} → 200
+- [x] PUT /api/v1/devices/{id}/fences/{fid} → 200
+- [x] DELETE /api/v1/devices/{id}/fences/{fid} → 200
+- [x] 无效半径 → 422
+
+**Polygon Fences (17)**
+- [x] 创建多边形围栏 (4 vertices) → 201
+- [x] 顶点不足 (<3) → 422
+- [x] 非法 lat (>90) → 422
+- [x] 非法 lng (>180) → 422
+- [x] circle → polygon 类型切换 → 200
+- [x] 更新多边形顶点 → 200
+- [x] 列表包含 polygon 类型
+- [x] 圆形围栏向后兼容
+- [x] 无效 fence_type → 422
+- [x] 超过 100 顶点 → 422
+- [x] 重复连续顶点 → 422
+- [x] 更新顶点 <3 → 422
+- [x] 更新负半径 → 422
+- [x] 圆形非法 lat → 422
+- [x] 圆形非法 lng → 422
+- [x] 空顶点数组 → 422
+- [x] 无顶点字段 → 422
+
+**Alerts (3)**
+- [x] GET /api/v1/alerts/ → 200
 - [x] PUT /api/v1/alerts/{id}/read → 200/404
+- [x] PUT /api/v1/alerts/read-all → 200
+
+**MQTT 消息格式 (4)**
+- [x] Location payload 字段验证
+- [x] Heartbeat payload 字段验证
+- [x] SOS payload 字段验证
+- [x] Low battery payload 字段验证
+
+**Fence Alerts (5)**
+- [x] geofence_enter 查询
+- [x] geofence_exit 查询
+- [x] Fence alert payload 结构
+- [x] 多围栏创建 + 列表
+- [x] 禁用围栏行为
+
+**Offline Reporting (4)**
+- [x] 设备状态在线检测
+- [x] offline 告警类型可查询
+- [x] Alert payload 结构验证
+- [x] last_seen 跟踪
+
+**Alert Edge Cases (2)**
+- [x] 分页边界测试
+- [x] 多类型过滤
+
+**Device Sharing (18)**
+- [x] 分享设备 → 201
+- [x] control 权限
+- [x] 重复分享 upsert
+- [x] 不能分享给自己 → 400
+- [x] 分享给不存在用户 → 404
+- [x] 无效权限 → 400
+- [x] 无auth分享 → 401
+- [x] 列出分享列表
+- [x] 非所有者查看 → 403
+- [x] 撤销分享
+- [x] shared-with-me 列表
+- [x] 分享不存在的设备 → 403
+- [x] 撤销不存在分享 → 404
+- [x] 已撤销再撤销 → 404
+- [x] 空邮箱 → 400/404/422
+- [x] 默认权限 = view
+- [x] 空分享列表
+- [x] 撤销后可重新分享
 
 **Edge Cases (4)**
 - [x] 空 JSON 登录 → 422
 - [x] 非法 JSON → 400/422
 - [x] 超长 device_id → 不崩溃
-- [x] 绑定设备到他人 → 403
+- [x] 错误 Auth scheme → 401
+
+**E2E Full Flow (1)**
+- [x] register → login → profile → bind → my devices
+- [x] → circle fence → polygon fence → list fences
+- [x] → alerts accessible → mark all read → share → revoke
 
 ### 手动 API 调试
 ```bash
@@ -420,9 +520,9 @@ MQTT Topics:
 - [ ] 后端正确入库 (PostgreSQL)
 
 ### Phase 6: 后端 API (1 min)
-- [ ] `pytest tests/test_api.py -v` 全部 27 通过
+- [ ] `pytest tests/test_api.py -v` 全部 119 通过
 - [ ] 健康检查 /health → 200
-- [ ] MQTT 消息触发正确 API 返回
+- [ ] E2E 完整流程通过
 
 ---
 

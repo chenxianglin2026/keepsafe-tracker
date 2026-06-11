@@ -12,7 +12,7 @@
 所有 `/api/v1/*` 端点（除 `/health`, `/docs`, `/api/v1/users/register`, `/api/v1/users/login`, `/api/v1/auth/*` 外）需要 Bearer Token:
 
 ```
-Authorization: Bearer <access_token>
+Authorization: Bearer <token>
 ```
 
 Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` 环境变量控制（默认 1440 分钟 = 24 小时）。
@@ -97,7 +97,7 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 {
   "nickname": "新昵称",
   "avatar_url": "https://...",
-  "phone": "+8613800138000"
+  "phone": "+861****8000"
 }
 ```
 
@@ -200,6 +200,8 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 
 ### 4. 围栏 (Fences)
 
+支持两种围栏类型: **圆形 (circle)** 和 **多边形 (polygon)**。
+
 | 方法 | 路径 | 鉴权 | 说明 |
 |------|------|------|------|
 | GET | `/api/v1/devices/{device_id}/fences` | 是 | 获取围栏列表 |
@@ -216,9 +218,11 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
       "id": 1,
       "device_id": "KS-00000001",
       "name": "Home",
+      "fence_type": "circle",
       "lat": 31.23,
       "lng": 121.47,
       "radius": 500,
+      "vertices": null,
       "enabled": true,
       "created_at": "2026-06-08T12:00:00Z",
       "updated_at": "2026-06-08T12:00:00Z"
@@ -228,26 +232,60 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 }
 ```
 
+#### 4.1 圆形围栏 (Circle)
+
 **POST /devices/{id}/fences** — 请求体:
 ```json
 {
   "name": "Home",
+  "fence_type": "circle",
   "lat": 31.23,
   "lng": 121.47,
   "radius": 500,
   "enabled": true
 }
 ```
-- `radius`: 围栏半径（米）
+- `fence_type`: `"circle"` (默认)
+- `lat` / `lng`: 圆心坐标，范围 [-90,90] / [-180,180]
+- `radius`: 围栏半径（米），必须 > 0
+
+#### 4.2 多边形围栏 (Polygon)
+
+**POST /devices/{id}/fences** — 请求体:
+```json
+{
+  "name": "School Zone",
+  "fence_type": "polygon",
+  "vertices": [
+    {"lat": 31.2000, "lng": 121.4500},
+    {"lat": 31.2200, "lng": 121.4500},
+    {"lat": 31.2200, "lng": 121.4900},
+    {"lat": 31.2000, "lng": 121.4900}
+  ],
+  "enabled": true
+}
+```
+- `fence_type`: `"polygon"`
+- `vertices`: 至少 3 个顶点，最多 100 个顶点
+- 每个顶点 lat 范围 [-90,90], lng 范围 [-180,180]
+- 不允许连续的重复顶点（退化边）
 
 **PUT /devices/{id}/fences/{fid}** — 请求体 (所有字段可选):
 ```json
 {
   "name": "Home Updated",
+  "fence_type": "polygon",
   "radius": 1000,
+  "vertices": [
+    {"lat": 31.20, "lng": 121.40},
+    {"lat": 31.22, "lng": 121.40},
+    {"lat": 31.22, "lng": 121.44}
+  ],
   "enabled": false
 }
 ```
+- 支持类型切换 (circle ↔ polygon)，切换后会忽略旧类型的字段
+- 更新 polygon vertices 同样受 3-100 个顶点约束
 
 ---
 
@@ -262,7 +300,7 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 **GET /alerts/** — 查询参数:
 - `page` (int, 默认 1): 页码
 - `page_size` (int, 1-100, 默认 20): 每页条数
-- `alert_type` (str, 可选): 按类型筛选 (`sos`, `fence`, `low_battery`, `offline`)
+- `alert_type` (str, 可选): 按类型筛选 (`sos`, `fence`, `geofence_enter`, `geofence_exit`, `low_battery`, `offline`)
 - `is_read` (bool, 可选): 按已读/未读筛选
 
 响应:
@@ -273,8 +311,8 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
       "id": 1,
       "device_id": "KS-00000001",
       "ts": "2026-06-08T12:00:00Z",
-      "alert_type": "sos",
-      "payload": {"lat": 31.23, "lng": 121.47},
+      "alert_type": "geofence_enter",
+      "payload": {"fence_id": 1, "fence_name": "Home", "event": "enter", "lat": 31.23, "lng": 121.47},
       "is_read": false
     }
   ],
@@ -284,9 +322,99 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 }
 ```
 
+告警类型说明:
+| alert_type | 触发条件 |
+|-----------|---------|
+| `sos` | 设备触发 SOS 紧急按钮 |
+| `geofence_enter` | 设备进入围栏区域 |
+| `geofence_exit` | 设备离开围栏区域 |
+| `low_battery` | 电池电量低于阈值 (20%) |
+| `offline` | 设备超过 5 分钟未上报 (1h 去重) |
+
 ---
 
-### 6. 设备认证 (Device Auth — EMQX 回调)
+### 6. 设备分享 (Device Sharing)
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| POST | `/api/v1/devices/{device_id}/share` | 是 | 分享设备给其他用户 |
+| GET | `/api/v1/devices/{device_id}/shares` | 是 | 查看设备分享列表 |
+| DELETE | `/api/v1/devices/{device_id}/share/{share_id}` | 是 | 撤销分享 |
+| GET | `/api/v1/devices/shared-with-me` | 是 | 查看分享给我的设备 |
+
+**POST /devices/{id}/share** — 请求体:
+```json
+{
+  "shared_with_email": "friend@example.com",
+  "permissions": "view"
+}
+```
+- `shared_with_email`: 目标用户邮箱（不能是自己）
+- `permissions`: `"view"` (默认) 或 `"control"`
+- 如果已存在活跃分享，会更新权限 (upsert)
+- 响应 201:
+```json
+{
+  "id": 1,
+  "device_id": "KS-00000001",
+  "owner_user_id": "test-uuid-001",
+  "shared_with_user_id": "friend-uuid-002",
+  "permissions": "view",
+  "is_active": true,
+  "shared_at": "2026-06-08T12:00:00Z",
+  "revoked_at": null
+}
+```
+- 响应 400: 分享给自己、权限无效
+- 响应 404: 目标用户不存在
+
+**GET /devices/{id}/shares** — 响应:
+```json
+{
+  "shares": [
+    {
+      "id": 1,
+      "device_id": "KS-00000001",
+      "owner_user_id": "test-uuid-001",
+      "shared_with_user_id": "friend-uuid-002",
+      "permissions": "view",
+      "is_active": true,
+      "shared_at": "2026-06-08T12:00:00Z",
+      "revoked_at": null
+    }
+  ],
+  "total": 1
+}
+```
+- 仅设备所有者可查看分享列表
+
+**DELETE /devices/{id}/share/{share_id}** — 响应:
+```json
+{"message": "Share revoked successfully"}
+```
+- 撤销后 `is_active` 变为 `false`, `revoked_at` 记录时间
+- 可重新分享同一用户（创建新的活跃分享）
+
+**GET /devices/shared-with-me** — 响应:
+```json
+{
+  "devices": [
+    {
+      "device_id": "KS-00000001",
+      "device_nickname": "My Device",
+      "owner_nickname": "Owner",
+      "owner_email": "owner@example.com",
+      "permissions": "view",
+      "shared_at": "2026-06-08T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### 7. 设备认证 (Device Auth — EMQX 回调)
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |------|------|------|------|
@@ -332,6 +460,8 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 - 启用状态: `enabled` (非 `enable`)
 - 设备 Token: `device_token` / `token` (设备密钥，用于绑定校验)
 - 告警类型: `alert_type` (非 `type`)
+- 围栏类型: `fence_type`: `"circle"` | `"polygon"`
+- 分享权限: `permissions`: `"view"` | `"control"`
 
 ---
 
@@ -341,5 +471,18 @@ Token 通过 `/api/v1/users/login` 获取，有效期由 `JWT_EXPIRE_MINUTES` �
 cd ~/projects/keepsafe/code/backend
 source .venv/bin/activate
 pytest tests/test_api.py -v
-# 当前: 45 tests (2026-06-08)
+# 当前: 119 tests (2026-06-10)
+# 覆盖: health/auth/devices/fences(alerts)/users/push/sharing/polygon/e2e
 ```
+
+### E2E 完整流程测试
+
+`TestE2EFullFlow::test_e2e_full_flow` 覆盖完整的用户旅程:
+
+```
+register → login → profile → bind device → my devices
+  → create circle fence → create polygon fence → list fences
+  → alerts accessible → mark all read → share device → revoke share
+```
+
+12 步顺序执行，验证所有主要 API 端点的端到端集成。
