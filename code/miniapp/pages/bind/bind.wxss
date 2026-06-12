@@ -10,7 +10,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 60rpx;
+  margin-bottom: 48rpx;
 }
 
 .header-icon {
@@ -28,6 +28,40 @@
 .header-desc {
   font-size: 26rpx;
   color: var(--text-muted);
+}
+
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  margin-bottom: 40rpx;
+}
+
+.quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 32rpx;
+  background: var(--bg-surface);
+  border: 1rpx solid var(--border-color);
+  border-radius: 16rpx;
+  transition: all 0.2s;
+}
+
+.quick-btn:active {
+  background: rgba(79, 172, 254, 0.1);
+  border-color: var(--accent-primary);
+}
+
+.quick-btn-icon {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
+}
+
+.quick-btn-text {
+  font-size: 22rpx;
+  color: var(--text-secondary);
 }
 
 /* 表单 */

@@ -8,6 +8,22 @@
     <text class="header-desc">输入设备码和密钥以关联设备</text>
   </view>
 
+  <!-- 快捷操作 -->
+  <view class="quick-actions">
+    <view class="quick-btn" bindtap="onScanCode">
+      <text class="quick-btn-icon">📷</text>
+      <text class="quick-btn-text">扫码绑定</text>
+    </view>
+    <view class="quick-btn" bindtap="onPasteFromClipboard">
+      <text class="quick-btn-icon">📋</text>
+      <text class="quick-btn-text">粘贴识别</text>
+    </view>
+    <view class="quick-btn" bindtap="onClear">
+      <text class="quick-btn-icon">🗑</text>
+      <text class="quick-btn-text">清空</text>
+    </view>
+  </view>
+
   <!-- 表单 -->
   <view class="form-section">
     <view class="form-group">
@@ -57,8 +73,9 @@
   <view class="help-section">
     <text class="help-title">如何获取设备码和密钥？</text>
     <text class="help-item">1. 打开设备包装盒查看标签</text>
-    <text class="help-item">2. 或联系设备管理员获取</text>
-    <text class="help-item">3. 确保设备已开机并联网</text>
+    <text class="help-item">2. 扫描设备包装上的二维码</text>
+    <text class="help-item">3. 或联系设备管理员获取</text>
+    <text class="help-item">4. 确保设备已开机并联网</text>
   </view>
 
 </view>
