@@ -217,7 +217,8 @@ Page({
    * 获取未读告警数
    */
   fetchUnreadAlertCount() {
-    return api.getAlertList({ page_size: 1 })
+    // 过滤未读告警；后端支持 is_read 参数
+    return api.getAlertList({ page_size: 1, is_read: false })
       .then((result) => {
         if (result && result.total !== undefined) {
           this.setData({ unreadAlertCount: result.total })

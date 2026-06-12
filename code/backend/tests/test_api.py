@@ -3,7 +3,7 @@ KeepSafe Backend API — Comprehensive Test Suite
 Covers: health, auth, devices, fences, alerts, users, chat, edge cases,
 MQTT message formats, fence alerts, offline reporting, bind/unbind,
 push token management, device sharing, polygon fences, API auth enforcement,
-push notifications: SOS/low_battery/geofence dispatch (133 tests)
+push notifications: SOS/low_battery/geofence dispatch (150 tests)
 Run: pytest tests/test_api.py -v
 """
 import pytest
@@ -1099,13 +1099,143 @@ class TestDeviceSharing:
         assert r.json()["permissions"] == "control"
         assert r.json()["is_active"] is True
 
+    # ── Additional Boundary Tests ─────────────────────────
+
+    async def test_share_device_missing_shared_with_email(self, client, auth_headers):
+        """Sharing without shared_with_email field should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"permissions": "view"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_share_device_very_long_email(self, client, auth_headers):
+        """Sharing with a very long email string should be handled gracefully."""
+        long_email = "a" * 500 + "@test.com"
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": long_email, "permissions": "view"},
+            headers=auth_headers,
+        )
+        assert r.status_code in (404, 422)  # 404: user not found; 422: invalid format
+
+    async def test_share_device_multiple_users(self, client, auth_headers):
+        """Share same device with multiple different users — all succeed."""
+        # Register a third user
+        await client.post("/api/v1/users/register", json={
+            "email": "third@test.com", "password": "third123456", "nickname": "Third"
+        })
+        r1 = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        assert r1.status_code == 201
+        r2 = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "third@test.com", "permissions": "control"},
+            headers=auth_headers,
+        )
+        assert r2.status_code == 201
+        # List shares should now have at least 2
+        r3 = await client.get(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/shares",
+            headers=auth_headers,
+        )
+        assert r3.status_code == 200
+        assert r3.json()["total"] >= 2
+
+    async def test_shared_with_me_empty(self, client):
+        """Newly registered user sees empty shared-with-me."""
+        # Register a brand new user
+        await client.post("/api/v1/users/register", json={
+            "email": "lonely@test.com", "password": "lonely123456", "nickname": "Lonely"
+        })
+        r = await client.post("/api/v1/users/login", json={
+            "email": "lonely@test.com", "password": "lonely123456"
+        })
+        token = r.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        r2 = await client.get("/api/v1/devices/shared-with-me", headers=headers)
+        assert r2.status_code == 200
+        data = r2.json()
+        assert data["total"] == 0
+        assert data["devices"] == []
+
+    async def test_cannot_revoke_share_for_unowned_device(self, client, auth_headers):
+        """Non-owner trying to revoke share on device they don't own returns 403."""
+        r = await client.delete(
+            f"/api/v1/devices/KS-OTHER-DEV/share/1",
+            headers=auth_headers,
+        )
+        assert r.status_code == 403
+
+    async def test_revoke_share_then_list_verified(self, client, auth_headers):
+        """After revoking a share, it should no longer appear in shares list."""
+        cr = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        share_id = cr.json()["id"]
+        await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share/{share_id}",
+            headers=auth_headers,
+        )
+        # List shares and verify share_id not present
+        r = await client.get(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/shares",
+            headers=auth_headers,
+        )
+        share_ids = [s["id"] for s in r.json()["shares"] if s.get("is_active")]
+        assert share_id not in share_ids
+
+    async def test_share_device_viewer_cannot_manage(self, client, auth_headers):
+        """Viewer of a shared device cannot list or modify shares."""
+        # Create share for fresh@test.com
+        await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": "view"},
+            headers=auth_headers,
+        )
+        # Login as fresh@test.com
+        r = await client.post("/api/v1/users/login", json={
+            "email": "fresh@test.com", "password": "pass123456"
+        })
+        assert r.status_code == 200
+        fresh_token = r.json()["access_token"]
+        fresh_headers = {"Authorization": f"Bearer {fresh_token}"}
+        # Try to list shares (should be denied — not owner)
+        r2 = await client.get(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/shares",
+            headers=fresh_headers,
+        )
+        assert r2.status_code == 403
+        # Try to share further (should be denied)
+        r3 = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "third@test.com", "permissions": "view"},
+            headers=fresh_headers,
+        )
+        assert r3.status_code == 403
+
+    async def test_share_device_blank_permissions(self, client, auth_headers):
+        """Sharing with empty permissions string should be rejected or defaulted."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/share",
+            json={"shared_with_email": "fresh@test.com", "permissions": ""},
+            headers=auth_headers,
+        )
+        assert r.status_code in (400, 422)
+
 
 # ═══════════════════════════════════════════════════════
-# Polygon Fences (9 tests)
+# Polygon Fences (26 tests)
 # ═══════════════════════════════════════════════════════
 
 class TestPolygonFences:
-    """Test polygon-based geofence creation and management."""
+    """Test polygon-based geofence creation and management (26 tests)."""
 
     async def test_create_polygon_fence(self, client, auth_headers):
         """Create a polygon fence with 4 vertices."""
@@ -1390,6 +1520,88 @@ class TestPolygonFences:
         r = await client.post(
             f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
             json={"name": "No Verts", "fence_type": "polygon"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    # ── Additional Boundary Tests ─────────────────────────
+
+    async def test_create_circle_zero_radius(self, client, auth_headers):
+        """Circle fence with radius=0 should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Zero Radius", "lat": 31.23, "lng": 121.47, "radius": 0},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_circle_negative_lat(self, client, auth_headers):
+        """Circle fence with negative latitude (< -90) should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Neg Lat", "lat": -95.0, "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_circle_negative_lng(self, client, auth_headers):
+        """Circle fence with negative longitude (< -180) should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "Neg Lng", "lat": 31.23, "lng": -190.0, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_fence_missing_name(self, client, auth_headers):
+        """Fence creation without name field should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"lat": 31.23, "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_fence_empty_name(self, client, auth_headers):
+        """Fence with empty name should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "", "lat": 31.23, "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code in (201, 422)  # Some APIs allow empty names
+
+    async def test_update_nonexistent_fence(self, client, auth_headers):
+        """Updating a non-existent fence ID should return 404."""
+        r = await client.put(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences/99999",
+            json={"name": "Ghost"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    async def test_delete_nonexistent_fence(self, client, auth_headers):
+        """Deleting a non-existent fence ID should return 404."""
+        r = await client.delete(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences/99999",
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    async def test_create_fence_no_lat_for_circle(self, client, auth_headers):
+        """Circle fence without lat field should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "No Lat", "lng": 121.47, "radius": 200},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    async def test_create_fence_no_lng_for_circle(self, client, auth_headers):
+        """Circle fence without lng field should be rejected."""
+        r = await client.post(
+            f"/api/v1/devices/{TEST_DEVICE_ID}/fences",
+            json={"name": "No Lng", "lat": 31.23, "radius": 200},
             headers=auth_headers,
         )
         assert r.status_code == 422
