@@ -9,10 +9,10 @@ release_date: "2026-06-13"
 
 # ── Test Summary ────────────────────────────────────
 tests:
-  total: 150
-  passed: 150
+  total: 162
+  passed: 162
   failed: 0
-  duration_seconds: 1.13
+  duration_seconds: 1.12
   framework: pytest + httpx (ASGI transport)
   coverage_areas:
     - Health Check (2)
@@ -31,7 +31,8 @@ tests:
     - Alert Edge Cases — pagination/filtering (2)
     - Device Sharing — full lifecycle + boundaries (26)
     - Polygon Fences — CRUD + validation + type switching (26)
-    - Push Notifications — token lifecycle + dispatch routing (15)
+    - Push Notifications — token lifecycle + dispatch routing (14)
+    - Device Alert Push E2E — alert lifecycle + push routing + query (12)
     - E2E Full Flow (1)
 
 # ── Mini-Program → Backend API Alignment ───────────
@@ -88,6 +89,21 @@ miniapp:
     - components/map-locator
     - components/device-card
     - components/fence-picker
+  sos_page_alignment:
+    status: PASS
+    checked: "2026-06-13"
+    endpoints:
+      - getDeviceStatus:  GET /devices/{id}/status → battery, lat, lng ✓
+      - getSosEvents:     GET /devices/{id}/sos/events → SosEventOut[] ✓
+      - markAlertRead:    PUT /alerts/{id}/read → is_read ✓
+    fields_consistent: true
+    notes:
+      - "MAP_KEY placeholder ('YOUR_TENCENT_MAP_KEY') — 需发布前替换为真实腾讯地图 key"
+      - "reverseGeocode 使用腾讯地图 API 客户端侧 (符合小程序最佳实践)"
+      - "SOS 页面通过 URL query 参数接收 lat/lng/alert_id (标准小程序页面间传参)"
+      - "battery=null 降级处理正确 (battery != null ? status.battery : 0)"
+    known_issues:
+      - "紧急联系人功能使用 wx.showModal 提示 (后端暂未存储紧急联系人)"
 
 # ── Backend Services ────────────────────────────────
 backend:
@@ -109,7 +125,10 @@ firmware:
 
 # ── Next Steps ──────────────────────────────────────
 todo:
+  - "[x] 补充设备告警push端到端测试 (12 new E2E tests, 162 total)"
+  - "[x] 检查小程序sos页面与后端对齐 (PASS, 3 endpoints aligned)"
   - "[ ] 上传小程序代码至微信公众平台"
   - "[ ] 配置小程序服务器域名白名单: https://43.163.5.90"
   - "[ ] 验证 SSL 证书 (如需要)"
   - "[ ] getShareLink 后端端点补充 (低优先级)"
+  - "[ ] MAP_KEY 替换为真实腾讯地图 key (发布前)"
