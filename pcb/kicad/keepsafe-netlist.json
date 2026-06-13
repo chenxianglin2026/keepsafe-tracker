@@ -1,0 +1,17 @@
+{
+  "design": {"source": "KeepSafe Tracker v3.0", "date": "2026-06-13", "tool": "Hermes skidl"},
+  "components": [
+    {"ref": "U1", "value": "Air780EG", "footprint": "LGA-109_17.7x15.8mm", "side": "top"},
+    {"ref": "J1", "value": "SIM_Nano", "footprint": "SMD_6P_15.3x14.7mm", "side": "bottom"},
+    {"ref": "J2", "value": "IPEX1_UFL", "footprint": "IPEX1_SMD", "side": "top"},
+    {"ref": "ANT1", "value": "GPS_12x12mm", "footprint": "12x12mm_Pad", "side": "top"},
+    {"ref": "D1", "value": "LED_RED_0603", "footprint": "0603", "side": "top"},
+    {"ref": "D2", "value": "LED_GREEN_0603", "footprint": "0603", "side": "top"},
+    {"ref": "SW1", "value": "SW_3x4mm", "footprint": "SMD_3x4mm", "side": "top"},
+    {"ref": "BZ1", "value": "Buzzer_8.5mm", "footprint": "SMD_8.5mm", "side": "top"},
+    {"ref": "J3", "value": "BAT_1.25mm", "footprint": "SMD_2P_1.25mm", "side": "bottom"},
+    {"ref": "R1,R2", "value": "10KΩ", "footprint": "0402", "side": "top"},
+    {"ref": "C1,C2,C3", "value": "100nF", "footprint": "0402", "side": "top"},
+    {"ref": "C4", "value": "10μF", "footprint": "0805", "side": "top"}
+  ]
+}
