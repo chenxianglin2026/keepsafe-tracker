@@ -1,0 +1,115 @@
+# ============================================================
+# KeepSafe v1.1.0 — Release Configuration
+# ============================================================
+# Prepared: 2026-06-13
+# Purpose: 微信小程序发布前配置校验 + 部署参考
+
+version: "1.1.0"
+release_date: "2026-06-13"
+
+# ── Test Summary ────────────────────────────────────
+tests:
+  total: 150
+  passed: 150
+  failed: 0
+  duration_seconds: 1.13
+  framework: pytest + httpx (ASGI transport)
+  coverage_areas:
+    - Health Check (2)
+    - Auth + Device Auth (7)
+    - API Auth Enforcement — all endpoints (16)
+    - Devices — bind/unbind/status/location/history/sos (14)
+    - User Profile + Registration (7)
+    - Push Token Management (7)
+    - Fences — CRUD + validation (6)
+    - Alerts — list/mark-read/mark-all (4)
+    - Device ACL (2)
+    - Edge Cases — invalid JSON, long IDs, bad auth (4)
+    - MQTT Message Format Validation (4)
+    - Fence Alerts — enter/exit/disabled/query (5)
+    - Offline Reporting (4)
+    - Alert Edge Cases — pagination/filtering (2)
+    - Device Sharing — full lifecycle + boundaries (26)
+    - Polygon Fences — CRUD + validation + type switching (26)
+    - Push Notifications — token lifecycle + dispatch routing (15)
+    - E2E Full Flow (1)
+
+# ── Mini-Program → Backend API Alignment ───────────
+api_alignment:
+  status: PASS
+  total_endpoints_miniapp: 25
+  aligned: 24
+  stubbed: 1  # getShareLink — 后端暂未实现
+  base_url: "http://43.163.5.90:8000/api/v1"
+  
+  # All aligned endpoints:
+  aligned_endpoints:
+    - login:              POST /users/login
+    - register:           POST /users/register
+    - getUserInfo:        GET  /users/profile
+    - updateUserInfo:     PUT  /users/profile
+    - registerPushToken:  POST /users/me/push-token
+    - getDeviceList:      GET  /users/me/devices
+    - getDeviceLocation:          GET  /devices/{id}/location
+    - getDeviceStatus:            GET  /devices/{id}/status
+    - getDeviceLocationHistory:   GET  /devices/{id}/history
+    - getSosEvents:               GET  /devices/{id}/sos/events
+    - bindDevice:         POST /devices/bind
+    - unbindDevice:       DELETE /devices/{id}/bind
+    - getFenceList:       GET  /devices/{id}/fences
+    - getFenceById:       GET  /devices/{id}/fences/{fid}
+    - createFence:        POST /devices/{id}/fences
+    - updateFence:        PUT  /devices/{id}/fences/{fid}
+    - deleteFence:        DELETE /devices/{id}/fences/{fid}
+    - getAlertList:       GET  /alerts/
+    - markAlertRead:      PUT  /alerts/{id}/read
+    - markAllAlertsRead:  PUT  /alerts/read-all
+    - shareDevice:        POST /devices/{id}/share
+    - getShareList:       GET  /devices/{id}/shares
+    - revokeShare:        DELETE /devices/{id}/share/{sid}
+    - getSharedWithMe:    GET  /devices/shared-with-me
+
+# ── Mini-Program Pages ──────────────────────────────
+miniapp:
+  pages: 8
+  tabbar_pages: 3
+  pages_list:
+    - pages/login/login         # 登录
+    - pages/index/index         # 地图 (Tab)
+    - pages/alerts/alert        # 告警 (Tab)
+    - pages/sos-detail/sos-detail  # SOS详情
+    - pages/profile/profile     # 我的 (Tab)
+    - pages/device/device       # 设备管理
+    - pages/fence/fence         # 围栏管理
+    - pages/bind/bind           # 绑定设备
+  appid: "wxebce4c590760c9e3"
+  lib_version: "3.7.0"
+  components:
+    - components/map-locator
+    - components/device-card
+    - components/fence-picker
+
+# ── Backend Services ────────────────────────────────
+backend:
+  framework: Python FastAPI
+  host: "43.163.5.90"
+  port: 8000
+  database: PostgreSQL (TimescaleDB 2.17.2-pg15)
+  cache: Redis 7
+  mqtt: EMQX 5.7.1
+  push: FCM + APNs
+  chat_agent: enabled (deepseek-v4)
+  deployment: Docker Compose (4 services)
+
+# ── Firmware ────────────────────────────────────────
+firmware:
+  chip: EC618 (LuatOS)
+  status: DTU 暂停
+  at_scripts: code/firmware-ec618/at-scripts/
+
+# ── Next Steps ──────────────────────────────────────
+todo:
+  - "[ ] 上传小程序代码至微信公众平台"
+  - "[ ] 配置小程序服务器域名白名单: https://43.163.5.90"
+  - "[ ] 验证 SSL 证书 (如需要)"
+  - "[ ] getShareLink 后端端点补充 (低优先级)"
