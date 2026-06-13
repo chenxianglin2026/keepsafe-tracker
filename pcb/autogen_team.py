@@ -7,6 +7,15 @@ KeepSafe 防丢器 — AutoGen 开发团队
 """
 
 import os
+from pathlib import Path
+
+# Load API key from Hermes .env
+env_file = Path.home() / ".hermes" / ".env"
+if env_file.exists():
+    for line in env_file.read_text().strip().split("\n"):
+        if "=" in line and not line.startswith("#"):
+            key, val = line.split("=", 1)
+            os.environ.setdefault(key.strip(), val.strip())
 import autogen
 from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
