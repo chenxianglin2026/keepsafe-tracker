@@ -1,7 +1,6 @@
 --[[
-  gps.lua -- GPS/GNSS Data Parsing for EC618 (LuatOS)
-  Ported from: code/firmware/main/gps.c + gps.h (ESP32-S3)
-  Platform: Air780EG (EC618 core)
+  gps.lua -- GNSS Positioning Module for KeepSafe (LuatOS)
+  Platform: Air780EG (EC618), LuatOS-SoC
 
   The EC618 modem provides GNSS data via AT commands:
     - AT+CGNSPWR=1     — Power on GNSS

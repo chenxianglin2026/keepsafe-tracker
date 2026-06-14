@@ -1,7 +1,6 @@
 --[[
-  psm.lua -- Low-Power PSM Deep Sleep Module for KeepSafe DTU (LuatOS-SoC)
-  Platform: YED DTU3 (EC718P-M100PG, 非 EC618), LuatOS-SoC V1003
-  Date: 2026-06-10
+  psm.lua -- Low-Power PSM Deep Sleep Module for KeepSafe (LuatOS-SoC)
+  Platform: Air780EG (EC618), LuatOS-SoC
 
   PSM (Power Saving Mode) is a 3GPP Rel-12 feature that allows the modem
   to enter deep sleep between data transmissions while remaining registered
