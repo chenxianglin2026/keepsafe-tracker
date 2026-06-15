@@ -1,33 +1,459 @@
 (kicad_sch
   (version 20240108)
-  (generator "kicad_cli")
+  (generator "hermes-agent")
   (uuid "21b231c4-5e6e-4f78-86b9-94062abe53c0")
   (paper "A4")
   (title_block
-    (title "KeepSafe BLE/GPS Tracker")
-    (date "2026-05-28")
-    (rev "1.0")
+    (title "KeepSafe V3 PCB - Air780EG 防丢器")
+    (date "2026-06-13")
+    (rev "3.0")
     (company "KeepSafe")
   )
+
+  ;; ============================================================
+  ;; 自定义元件符号库
+  ;; ============================================================
   (lib_symbols
-    (symbol "Device:Battery_Cell" (pin_numbers hide) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes)
-      (property "Reference" "BAT" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
-      (property "Value" "Battery_Cell" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
-      (property "Footprint" "" (at 0 -7.62 0) (effects (font (size 1.27 1.27)) hide))
-      (property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (symbol "Battery_Cell_0_1" (rectangle (start -5.08 2.54) (end 5.08 -2.54) (stroke (width 0.254) (type default)) (fill (type background))))
-      (symbol "Battery_Cell_1_1" (pin power_in line (at 0 5.08 270) (length 2.54) (name "+" (effects (font (size 1.27 1.27)))) (number "1"))
-        (pin power_in line (at 0 -5.08 90) (length 2.54) (name "-" (effects (font (size 1.27 1.27)))) (number "2")))
+
+    ;; --- Air780EG 模组 (LGA-109, 17.7x15.8mm) ---
+    (symbol "KeepSafe:Air780EG" (pin_numbers hide) (pin_names (offset 0.508)) (exclude_from_sim no) (in_bom yes) (on_board yes)
+      (property "Reference" "U" (at 0 14 0) (effects (font (size 1.27 1.27))))
+      (property "Value" "Air780EG" (at 0 -14 0) (effects (font (size 1.27 1.27))))
+      (property "Footprint" "KeepSafe:LGA-109" (at 0 -16.5 0) (effects (font (size 1.27 1.27)) hide))
+      (property "Datasheet" "https://docs.openluat.com/air780eg/" (at 0 16.5 0) (effects (font (size 1.27 1.27)) hide))
+      (symbol "Air780EG_0_1"
+        (rectangle (start -12.7 12.7) (end 12.7 -12.7) (stroke (width 0.254) (type default)) (fill (type background)))
+      )
+      (symbol "Air780EG_1_1"
+        ;; Top edge - Power
+        (pin power_in line (at -5.08 12.7 270) (length 2.54) (name "VBAT1(1)" (effects (font (size 1.016 1.016)))) (number "1"))
+        (pin power_in line (at 0 12.7 270) (length 2.54) (name "VBAT2(2)" (effects (font (size 1.016 1.016)))) (number "2"))
+        (pin power_in line (at 5.08 12.7 270) (length 2.54) (name "VBAT3(3)" (effects (font (size 1.016 1.016)))) (number "3"))
+        ;; Left edge - GPIOs and Control
+        (pin bidirectional line (at -12.7 10.16 0) (length 2.54) (name "GPIO1(8)" (effects (font (size 1.016 1.016)))) (number "8"))
+        (pin bidirectional line (at -12.7 7.62 0) (length 2.54) (name "GPIO2(9)" (effects (font (size 1.016 1.016)))) (number "9"))
+        (pin bidirectional line (at -12.7 5.08 0) (length 2.54) (name "GPIO3(10)" (effects (font (size 1.016 1.016)))) (number "10"))
+        (pin bidirectional line (at -12.7 2.54 0) (length 2.54) (name "GPIO4(11)" (effects (font (size 1.016 1.016)))) (number "11"))
+        (pin input line (at -12.7 0 0) (length 2.54) (name "PWRKEY(20)" (effects (font (size 1.016 1.016)))) (number "20"))
+        (pin input line (at -12.7 -2.54 0) (length 2.54) (name "RESET(21)" (effects (font (size 1.016 1.016)))) (number "21"))
+        (pin output line (at -12.7 -5.08 0) (length 2.54) (name "UART1_TX(55)" (effects (font (size 1.016 1.016)))) (number "55"))
+        (pin input line (at -12.7 -7.62 0) (length 2.54) (name "UART1_RX(56)" (effects (font (size 1.016 1.016)))) (number "56"))
+        (pin bidirectional line (at -12.7 -10.16 0) (length 2.54) (name "USB_DP(49)" (effects (font (size 1.016 1.016)))) (number "49"))
+        (pin bidirectional line (at -12.7 -12.7 0) (length 2.54) (name "USB_DM(50)" (effects (font (size 1.016 1.016)))) (number "50"))
+        ;; Right edge - RF and SIM
+        (pin bidirectional line (at 12.7 10.16 180) (length 2.54) (name "ANT_MAIN(45)" (effects (font (size 1.016 1.016)))) (number "45"))
+        (pin input line (at 12.7 7.62 180) (length 2.54) (name "ANT_GNSS(67)" (effects (font (size 1.016 1.016)))) (number "67"))
+        (pin output line (at 12.7 5.08 180) (length 2.54) (name "SIM_VDD(74)" (effects (font (size 1.016 1.016)))) (number "74"))
+        (pin output line (at 12.7 2.54 180) (length 2.54) (name "SIM_RST(75)" (effects (font (size 1.016 1.016)))) (number "75"))
+        (pin output line (at 12.7 0 180) (length 2.54) (name "SIM_CLK(76)" (effects (font (size 1.016 1.016)))) (number "76"))
+        (pin bidirectional line (at 12.7 -2.54 180) (length 2.54) (name "SIM_DATA(77)" (effects (font (size 1.016 1.016)))) (number "77"))
+        ;; Bottom edge - GND
+        (pin power_in line (at -3.81 -12.7 90) (length 2.54) (name "GND(4)" (effects (font (size 1.016 1.016)))) (number "4"))
+        (pin power_in line (at 0 -12.7 90) (length 2.54) (name "GND(5)" (effects (font (size 1.016 1.016)))) (number "5"))
+        (pin power_in line (at 3.81 -12.7 90) (length 2.54) (name "GND(54)" (effects (font (size 1.016 1.016)))) (number "54"))
+      )
+    )
+
+    ;; --- GPS陶瓷天线 (自定义) ---
+    (symbol "KeepSafe:GPS_ANT_Ceramic" (pin_numbers hide) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes)
+      (property "Reference" "ANT" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+      (property "Value" "GPS_ANT_12x12" (at 0 -3.81 0) (effects (font (size 1.27 1.27))))
+      (property "Footprint" "KeepSafe:GPS_ANT_12x12mm" (at 0 -6.35 0) (effects (font (size 1.27 1.27)) hide))
+      (property "Datasheet" "~" (at 0 6.35 0) (effects (font (size 1.27 1.27)) hide))
+      (symbol "GPS_ANT_Ceramic_0_1"
+        (rectangle (start -5.08 2.54) (end 5.08 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))
+      )
+      (symbol "GPS_ANT_Ceramic_1_1"
+        (pin input line (at -7.62 0 0) (length 2.54) (name "RF_IN" (effects (font (size 1.27 1.27)))) (number "1"))
+        (pin passive line (at -7.62 -2.54 0) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "2"))
+        (pin passive line (at 7.62 -2.54 180) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "3"))
+      )
+    )
+
+    ;; --- 蜂鸣器驱动 (NPN三极管 + 蜂鸣器) ---
+    (symbol "KeepSafe:Buzzer_Driver" (pin_numbers hide) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes)
+      (property "Reference" "BZ" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+      (property "Value" "Buzzer_8.5mm" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+      (property "Footprint" "KeepSafe:Buzzer_8.5mm_SMD" (at 0 -7.62 0) (effects (font (size 1.27 1.27)) hide))
+      (property "Datasheet" "~" (at 0 7.62 0) (effects (font (size 1.27 1.27)) hide))
+      (symbol "Buzzer_Driver_0_1"
+        (rectangle (start -5.08 3.81) (end 5.08 -3.81) (stroke (width 0.254) (type default)) (fill (type background)))
+      )
+      (symbol "Buzzer_Driver_1_1"
+        (pin input line (at -7.62 2.54 0) (length 2.54) (name "SIG" (effects (font (size 1.27 1.27)))) (number "1"))
+        (pin power_in line (at -7.62 -2.54 0) (length 2.54) (name "VCC" (effects (font (size 1.27 1.27)))) (number "2"))
+        (pin power_in line (at 7.62 -2.54 180) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "3"))
+      )
     )
   )
-  (junction (at 100 100) (diameter 0) (color 0 0 0 0) (uuid "41872877-9459-4136-a016-c7305f5b2a47"))
-  (no_connect (at 120 80) (uuid "1439ba9b-af78-4b9e-b4fe-5d7474166491"))
-  (wire (pts (xy 100 100) (xy 120 100)) (stroke (width 0) (type default)) (uuid "e7cbd680-6d91-417f-b431-e45b14b04e93"))
-  (text "KeepSafe PCB - 展锐8910 主控 + GPS/北斗 + 4G Cat.1 + BLE" (at 50 150 0) (effects (font (size 2 2)) (justify left bottom)) (uuid "6da5a536-3637-4325-8ae6-29c794a9387d"))
-  (text "BOM: 展锐8910, LIS3DH, 蜂鸣器85dB, LED, 振动马达, USB-C, SIM座, GPS天线, 4G天线, 300mAh电池" (at 50 145 0) (effects (font (size 1.5 1.5)) (justify left bottom)) (uuid "6391dcab-5fb9-4b65-a044-17092f719013"))
-  (symbol (lib_id "Device:Battery_Cell") (at 100 100 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "3d7e8fea-7cab-495a-8c34-6a947c7a98a2")
-    (property "Reference" "BAT1" (at 100 105 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "300mAh" (at 100 95 0) (effects (font (size 1.27 1.27))))
+
+  ;; ============================================================
+  ;; 导线连接
+  ;; ============================================================
+
+  ;; --- 电源网络 VBAT ---
+  (wire (pts (xy 74.93 112.7) (xy 94.92 112.7)) (stroke (width 0.254) (type default)) (uuid "e0000001-0000-0000-0000-000000000001"))
+  (wire (pts (xy 94.92 112.7) (xy 94.92 112.7)) (stroke (width 0.254) (type default)) (uuid "e0000001-0000-0000-0000-000000000002"))
+  (junction (at 94.92 112.7) (diameter 0) (color 0 0 0 0) (uuid "j0000001-0000-0000-0000-000000000001"))
+  (wire (pts (xy 94.92 112.7) (xy 94.92 112.7)) (stroke (width 0.254) (type default)) (uuid "e0000001-0000-0000-0000-000000000003"))
+
+  ;; --- GND 网络 ---
+  (wire (pts (xy 60 87.3) (xy 60 100) (stroke (width 0.254) (type default)) (uuid "e0000002-0000-0000-0000-000000000001"))
+  (wire (pts (xy 87.3 60) (xy 87.3 87.3) (stroke (width 0.254) (type default)) (uuid "e0000002-0000-0000-0000-000000000002"))
+  (wire (pts (xy 87.3 87.3) (xy 60 87.3) (stroke (width 0.254) (type default)) (uuid "e0000002-0000-0000-0000-000000000003"))
+
+  ;; ============================================================
+  ;; 元件放置
+  ;; ============================================================
+
+  ;; --- U1: Air780EG 模组 ---
+  (symbol (lib_id "KeepSafe:Air780EG") (at 107.95 100 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000001-0000-0000-0000-000000000001")
+    (property "Reference" "U1" (at 107.95 114 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Air780EG" (at 107.95 86 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "KeepSafe:LGA-109" (at 107.95 83.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "https://docs.openluat.com/air780eg/" (at 107.95 116.5 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000001-0000-0000-0000-0000000001a1"))
+    (pin "2" (uuid "00000001-0000-0000-0000-0000000001a2"))
+    (pin "3" (uuid "00000001-0000-0000-0000-0000000001a3"))
+    (pin "8" (uuid "00000001-0000-0000-0000-0000000001a8"))
+    (pin "9" (uuid "00000001-0000-0000-0000-0000000001a9"))
+    (pin "10" (uuid "00000001-0000-0000-0000-00000000010a"))
+    (pin "11" (uuid "00000001-0000-0000-0000-00000000010b"))
+    (pin "20" (uuid "00000001-0000-0000-0000-000000000114"))
+    (pin "21" (uuid "00000001-0000-0000-0000-000000000115"))
+    (pin "55" (uuid "00000001-0000-0000-0000-000000000137"))
+    (pin "56" (uuid "00000001-0000-0000-0000-000000000138"))
+    (pin "49" (uuid "00000001-0000-0000-0000-000000000131"))
+    (pin "50" (uuid "00000001-0000-0000-0000-000000000132"))
+    (pin "45" (uuid "00000001-0000-0000-0000-00000000012d"))
+    (pin "67" (uuid "00000001-0000-0000-0000-000000000143"))
+    (pin "74" (uuid "00000001-0000-0000-0000-00000000014a"))
+    (pin "75" (uuid "00000001-0000-0000-0000-00000000014b"))
+    (pin "76" (uuid "00000001-0000-0000-0000-00000000014c"))
+    (pin "77" (uuid "00000001-0000-0000-0000-00000000014d"))
+    (pin "4" (uuid "00000001-0000-0000-0000-000000000104"))
+    (pin "5" (uuid "00000001-0000-0000-0000-000000000105"))
+    (pin "54" (uuid "00000001-0000-0000-0000-000000000136"))
   )
+
+  ;; --- J3: 电池连接器 (1.25mm 2pin) ---
+  (symbol (lib_id "Connector:Conn_01x02_Male") (at 74.93 120 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000002-0000-0000-0000-000000000001")
+    (property "Reference" "J3" (at 74.93 125.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Battery_1.25mm_2P" (at 74.93 114.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal" (at 74.93 112.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 120 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000002-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000002-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- D1: 红色 LED 0603 ---
+  (symbol (lib_id "Device:LED") (at 74.93 105 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000003-0000-0000-0000-000000000001")
+    (property "Reference" "D1" (at 74.93 110.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LED_RED_0603" (at 74.93 99.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric" (at 74.93 97.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 105 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000003-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000003-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- D2: 绿色 LED 0603 ---
+  (symbol (lib_id "Device:LED") (at 74.93 95 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000004-0000-0000-0000-000000000001")
+    (property "Reference" "D2" (at 74.93 100.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LED_GRN_0603" (at 74.93 89.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric" (at 74.93 87.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 95 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000004-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000004-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- R1: 10KΩ LED限流 (红色) ---
+  (symbol (lib_id "Device:R") (at 87.63 105 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000005-0000-0000-0000-000000000001")
+    (property "Reference" "R1" (at 87.63 107.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "10K" (at 87.63 102.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 87.63 100 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 87.63 105 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000005-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000005-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- R2: 10KΩ LED限流 (绿色) ---
+  (symbol (lib_id "Device:R") (at 87.63 95 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000006-0000-0000-0000-000000000001")
+    (property "Reference" "R2" (at 87.63 97.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "10K" (at 87.63 92.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 87.63 90 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 87.63 95 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000006-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000006-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- SW1: 按键 (侧按轻触) ---
+  (symbol (lib_id "Switch:SW_Push") (at 74.93 85 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000007-0000-0000-0000-000000000001")
+    (property "Reference" "SW1" (at 74.93 90.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SW_3x4x2.5" (at 74.93 79.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_SPST_EVQP" (at 74.93 77.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 85 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000007-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000007-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- R3: 10KΩ 按键上拉 ---
+  (symbol (lib_id "Device:R") (at 87.63 85 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000008-0000-0000-0000-000000000001")
+    (property "Reference" "R3" (at 87.63 87.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "10K" (at 87.63 82.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 87.63 80 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 87.63 85 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000008-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000008-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- BZ1: 蜂鸣器驱动模块 ---
+  (symbol (lib_id "KeepSafe:Buzzer_Driver") (at 74.93 75 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000009-0000-0000-0000-000000000001")
+    (property "Reference" "BZ1" (at 74.93 80.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Buzzer_8.5mm" (at 74.93 69.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "KeepSafe:Buzzer_8.5mm_SMD" (at 74.93 67.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 82.5 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000009-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000009-0000-0000-0000-000000000102"))
+    (pin "3" (uuid "00000009-0000-0000-0000-000000000103"))
+  )
+
+  ;; --- J1: Nano SIM卡座 ---
+  (symbol (lib_id "Connector:Sim_Card_Nano") (at 140 115 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000a-0000-0000-0000-000000000001")
+    (property "Reference" "J1" (at 140 122 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SIM_Nano_PushPull" (at 140 108 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal" (at 140 105 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 140 115 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "C1" (uuid "0000000a-0000-0000-0000-0000000001c1"))
+    (pin "C2" (uuid "0000000a-0000-0000-0000-0000000001c2"))
+    (pin "C3" (uuid "0000000a-0000-0000-0000-0000000001c3"))
+    (pin "C5" (uuid "0000000a-0000-0000-0000-0000000001c5"))
+    (pin "C6" (uuid "0000000a-0000-0000-0000-0000000001c6"))
+  )
+
+  ;; --- ANT1: GPS天线 ---
+  (symbol (lib_id "KeepSafe:GPS_ANT_Ceramic") (at 140 90 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000b-0000-0000-0000-000000000001")
+    (property "Reference" "ANT1" (at 140 95 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "GPS_ANT_12x12" (at 140 85 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "KeepSafe:GPS_ANT_12x12mm" (at 140 82.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 140 97.5 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000000b-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "0000000b-0000-0000-0000-000000000102"))
+    (pin "3" (uuid "0000000b-0000-0000-0000-000000000103"))
+  )
+
+  ;; --- J2: IPEX-1 4G天线座 ---
+  (symbol (lib_id "Connector_Coaxial:U.FL-R-SMT-1") (at 140 70 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000c-0000-0000-0000-000000000001")
+    (property "Reference" "J2" (at 140 75.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "IPEX1_U.FL" (at 140 64.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_Antenna:U.FL-R-SMT-1" (at 140 62.5 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 140 70 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000000c-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "0000000c-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C1: 100nF 去耦 ---
+  (symbol (lib_id "Device:C") (at 120 115 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000d-0000-0000-0000-000000000001")
+    (property "Reference" "C1" (at 120 117.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "100nF" (at 120 112.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 120 110 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 120 115 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000000d-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "0000000d-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C2: 100nF 去耦 ---
+  (symbol (lib_id "Device:C") (at 125 115 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000e-0000-0000-0000-000000000001")
+    (property "Reference" "C2" (at 125 117.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "100nF" (at 125 112.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 125 110 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 125 115 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000000e-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "0000000e-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C3: 100nF 去耦 ---
+  (symbol (lib_id "Device:C") (at 130 115 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "0000000f-0000-0000-0000-000000000001")
+    (property "Reference" "C3" (at 130 117.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "100nF" (at 130 112.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 130 110 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 130 115 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000000f-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "0000000f-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C4: 10μF 电源滤波 ---
+  (symbol (lib_id "Device:C") (at 120 108 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000010-0000-0000-0000-000000000001")
+    (property "Reference" "C4" (at 120 110.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "10uF" (at 120 105.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 120 103 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 120 108 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000010-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000010-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C5: 22pF 天线匹配 ---
+  (symbol (lib_id "Device:C") (at 150 90 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000011-0000-0000-0000-000000000001")
+    (property "Reference" "C5" (at 150 92.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "22pF" (at 150 87.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 150 85 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 150 90 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000011-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000011-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- C6: 22pF 天线匹配 ---
+  (symbol (lib_id "Device:C") (at 150 83 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid "00000012-0000-0000-0000-000000000001")
+    (property "Reference" "C6" (at 150 85.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "22pF" (at 150 80.46 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 150 78 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 150 83 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000012-0000-0000-0000-000000000101"))
+    (pin "2" (uuid "00000012-0000-0000-0000-000000000102"))
+  )
+
+  ;; --- TP1-TP4: 测试点 ---
+  (symbol (lib_id "Connector:TestPoint") (at 60 145 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000013-0000-0000-0000-000000000001")
+    (property "Reference" "TP1" (at 60 148 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "UART1_TX" (at 60 142 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm" (at 60 145 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 60 145 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000013-0000-0000-0000-000000000101"))
+  )
+  (symbol (lib_id "Connector:TestPoint") (at 66 145 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000014-0000-0000-0000-000000000001")
+    (property "Reference" "TP2" (at 66 148 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "UART1_RX" (at 66 142 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm" (at 66 145 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 66 145 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000014-0000-0000-0000-000000000101"))
+  )
+  (symbol (lib_id "Connector:TestPoint") (at 72 145 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000015-0000-0000-0000-000000000001")
+    (property "Reference" "TP3" (at 72 148 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "USB_DP" (at 72 142 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm" (at 72 145 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 72 145 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000015-0000-0000-0000-000000000101"))
+  )
+  (symbol (lib_id "Connector:TestPoint") (at 78 145 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000016-0000-0000-0000-000000000001")
+    (property "Reference" "TP4" (at 78 148 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "USB_DM" (at 78 142 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm" (at 78 145 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 78 145 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000016-0000-0000-0000-000000000101"))
+  )
+
+  ;; --- GND 符号 (多个接地点) ---
+  (symbol (lib_id "power:GND") (at 60 100 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000017-0000-0000-0000-000000000001")
+    (property "Reference" "#PWR01" (at 60 100 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "GND" (at 60 95.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "" (at 60 100 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 60 100 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000017-0000-0000-0000-000000000101"))
+  )
+
+  (symbol (lib_id "power:GND") (at 107.95 87.3 0) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000018-0000-0000-0000-000000000001")
+    (property "Reference" "#PWR02" (at 107.95 87.3 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "GND" (at 107.95 82.38 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "" (at 107.95 87.3 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 107.95 87.3 0) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000018-0000-0000-0000-000000000101"))
+  )
+
+  ;; --- VBAT 电源符号 ---
+  (symbol (lib_id "power:VBAT") (at 74.93 127 90) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "00000019-0000-0000-0000-000000000001")
+    (property "Reference" "#PWR03" (at 74.93 127 90) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "VBAT" (at 74.93 122 90) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "" (at 74.93 127 90) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 74.93 127 90) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "00000019-0000-0000-0000-000000000101"))
+  )
+
+  ;; --- +3.3V 电源符号 (用于上拉) ---
+  (symbol (lib_id "power:+3V3") (at 87.63 82 180) (unit 1) (in_bom no) (on_board yes) (dnp no) (uuid "0000001a-0000-0000-0000-000000000001")
+    (property "Reference" "#PWR04" (at 87.63 82 180) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "+3V3" (at 87.63 78 180) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "" (at 87.63 82 180) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "~" (at 87.63 82 180) (effects (font (size 1.27 1.27)) hide))
+    (pin "1" (uuid "0000001a-0000-0000-0000-000000000101"))
+  )
+
+  ;; ============================================================
+  ;; 文本标注
+  ;; ============================================================
+  (text "KeepSafe V3 PCB - Air780EG (EC618 SoC) 单芯片方案"
+    (at 55 155 0) (effects (font (size 2 2)) (justify left bottom)) (uuid "t0000001-0000-0000-0000-000000000001"))
+  (text "BOM: Air780EG, SIM Nano, GPS ANT 12x12, IPEX1, LEDx2, SW, Buzzer, Battery 1.25mm 2P"
+    (at 55 150 0) (effects (font (size 1.5 1.5)) (justify left bottom)) (uuid "t0000002-0000-0000-0000-000000000002"))
+  (text "R1,R2=10K(LED限流) R3=10K(按键上拉) C1-C3=100nF(去耦) C4=10uF(滤波) C5,C6=22pF(天线匹配)"
+    (at 55 147 0) (effects (font (size 1.2 1.2)) (justify left bottom)) (uuid "t0000003-0000-0000-0000-000000000003"))
+  (text "GPIO1→绿LED  GPIO2→红LED  GPIO3→按键  GPIO4→蜂鸣器"
+    (at 55 144 0) (effects (font (size 1.2 1.2)) (justify left bottom)) (uuid "t0000004-0000-0000-0000-000000000004"))
+
+  ;; ============================================================
+  ;; 导线连接网络
+  ;; ============================================================
+
+  ;; --- VBAT 网络: J3.pin1 → U1.VBAT1,2,3 ---
+  (wire (pts (xy 74.93 120) (xy 94.92 120)) (stroke (width 0.254) (type default)) (uuid "w0000001-0000-0000-0000-000000000001"))
+  (wire (pts (xy 94.92 120) (xy 94.92 112.7)) (stroke (width 0.254) (type default)) (uuid "w0000001-0000-0000-0000-000000000002"))
+  (junction (at 94.92 112.7) (diameter 0) (color 0 0 0 0) (uuid "j0000001-0000-0000-0000-000000000001"))
+  (wire (pts (xy 94.92 112.7) (xy 102.87 112.7)) (stroke (width 0.254) (type default)) (uuid "w0000001-0000-0000-0000-000000000003"))
+  (wire (pts (xy 107.95 112.7) (xy 107.95 108.3)) (stroke (width 0.254) (type default)) (uuid "w0000001-0000-0000-0000-000000000004"))
+
+  ;; --- GND 网络 ---
+  (wire (pts (xy 74.93 118) (xy 74.93 100)) (stroke (width 0.254) (type default)) (uuid "w0000002-0000-0000-0000-000000000001"))
+  (wire (pts (xy 74.93 100) (xy 60 100)) (stroke (width 0.254) (type default)) (uuid "w0000002-0000-0000-0000-000000000002"))
+
+  ;; GND bus from U1 GND pins to ground
+  (wire (pts (xy 107.95 87.3) (xy 107.95 87.3)) (stroke (width 0.254) (type default)) (uuid "w0000002-0000-0000-0000-000000000003"))
+
+  ;; --- LED网络: GPIO1 → R2 → D2(Green) → GND ---
+  (wire (pts (xy 95.25 110.16) (xy 87.63 110.16)) (stroke (width 0.254) (type default)) (uuid "w0000003-0000-0000-0000-000000000001"))
+  (wire (pts (xy 87.63 107.54) (xy 87.63 105)) (stroke (width 0.254) (type default)) (uuid "w0000003-0000-0000-0000-000000000002"))
+  (wire (pts (xy 87.63 102.46) (xy 87.63 95)) (stroke (width 0.254) (type default)) (uuid "w0000003-0000-0000-0000-000000000003"))
+
+  ;; --- LED网络: GPIO2 → R1 → D1(Red) → GND ---
+  (wire (pts (xy 95.25 107.62) (xy 87.63 107.62)) (stroke (width 0.254) (type default)) (uuid "w0000004-0000-0000-0000-000000000001"))
+  (wire (pts (xy 87.63 107.54) (xy 87.63 105)) (stroke (width 0.254) (type default)) (uuid "w0000004-0000-0000-0000-000000000002"))
+  (wire (pts (xy 87.63 102.46) (xy 87.63 95)) (stroke (width 0.254) (type default)) (uuid "w0000004-0000-0000-0000-000000000003"))
+
+  ;; --- 按键网络: GPIO3 → SW1 → GND, with R3 pullup to 3.3V ---
+  (wire (pts (xy 95.25 105.08) (xy 87.63 105.08)) (stroke (width 0.254) (type default)) (uuid "w0000005-0000-0000-0000-000000000001"))
+  (wire (pts (xy 87.63 102) (xy 87.63 85)) (stroke (width 0.254) (type default)) (uuid "w0000005-0000-0000-0000-000000000002"))
+  (wire (pts (xy 87.63 85) (xy 74.93 85)) (stroke (width 0.254) (type default)) (uuid "w0000005-0000-0000-0000-000000000003"))
+
+  ;; --- 蜂鸣器网络: GPIO4 → BZ1 SIG ---
+  (wire (pts (xy 95.25 102.54) (xy 74.93 102.54)) (stroke (width 0.254) (type default)) (uuid "w0000006-0000-0000-0000-000000000001"))
+  (wire (pts (xy 74.93 102.54) (xy 74.93 77.54)) (stroke (width 0.254) (type default)) (uuid "w0000006-0000-0000-0000-000000000002"))
+
+  ;; --- SIM卡网络 ---
+  ;; SIM_VDD → J1.C1
+  (wire (pts (xy 120.65 105.08) (xy 140 105.08)) (stroke (width 0.254) (type default)) (uuid "w0000007-0000-0000-0000-000000000001"))
+  (wire (pts (xy 140 105.08) (xy 140 115)) (stroke (width 0.254) (type default)) (uuid "w0000007-0000-0000-0000-000000000002"))
+  ;; SIM_RST → J1.C2
+  (wire (pts (xy 120.65 102.54) (xy 140 102.54)) (stroke (width 0.254) (type default)) (uuid "w0000008-0000-0000-0000-000000000001"))
+  ;; SIM_CLK → J1.C3
+  (wire (pts (xy 120.65 100) (xy 140 100)) (stroke (width 0.254) (type default)) (uuid "w0000009-0000-0000-0000-000000000001"))
+  ;; SIM_DATA → J1.C6
+  (wire (pts (xy 120.65 97.46) (xy 140 97.46)) (stroke (width 0.254) (type default)) (uuid "w000000a-0000-0000-0000-000000000001"))
+
+  ;; --- GPS天线网络: ANT_GNSS → C5,C6 匹配 → ANT1 ---
+  (wire (pts (xy 120.65 107.62) (xy 132 107.62)) (stroke (width 0.254) (type default)) (uuid "w000000b-0000-0000-0000-000000000001"))
+  (wire (pts (xy 140 107.62) (xy 140 97.62)) (stroke (width 0.254) (type default)) (uuid "w000000b-0000-0000-0000-000000000002"))
+  (wire (pts (xy 140 97.62) (xy 140 90)) (stroke (width 0.254) (type default)) (uuid "w000000b-0000-0000-0000-000000000003"))
+
+  ;; --- 4G天线网络: ANT_MAIN → J2 ---
+  (wire (pts (xy 120.65 110.16) (xy 140 110.16)) (stroke (width 0.254) (type default)) (uuid "w000000c-0000-0000-0000-000000000001"))
+  (wire (pts (xy 140 110.16) (xy 140 70)) (stroke (width 0.254) (type default)) (uuid "w000000c-0000-0000-0000-000000000002"))
+
+  ;; --- 测试点网络 ---
+  (wire (pts (xy 95.25 95.08) (xy 66 95.08)) (stroke (width 0.254) (type default)) (uuid "w000000d-0000-0000-0000-000000000001"))
+  (wire (pts (xy 66 95.08) (xy 66 145)) (stroke (width 0.254) (type default)) (uuid "w000000d-0000-0000-0000-000000000002"))
+
+  ;; --- 去耦电容连接 (VBAT旁路) ---
+  (wire (pts (xy 120 112.46) (xy 120 112.7)) (stroke (width 0.254) (type default)) (uuid "w000000e-0000-0000-0000-000000000001"))
+  (wire (pts (xy 120 112.7) (xy 120.65 112.7)) (stroke (width 0.254) (type default)) (uuid "w000000e-0000-0000-0000-000000000002"))
+  (wire (pts (xy 125 112.46) (xy 125 112.7)) (stroke (width 0.254) (type default)) (uuid "w000000f-0000-0000-0000-000000000001"))
+  (wire (pts (xy 130 112.46) (xy 130 112.7)) (stroke (width 0.254) (type default)) (uuid "w000000f-0000-0000-0000-000000000002"))
+
   (sheet_instances (path "/" (page "1")))
 )

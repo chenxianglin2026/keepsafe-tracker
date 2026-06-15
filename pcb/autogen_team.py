@@ -15,7 +15,8 @@ if env_file.exists():
     for line in env_file.read_text().strip().split("\n"):
         if "=" in line and not line.startswith("#"):
             key, val = line.split("=", 1)
-            os.environ.setdefault(key.strip(), val.strip())
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            os.environ.setdefault(key, val)
 import autogen
 from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
@@ -108,7 +109,7 @@ user_proxy = UserProxyAgent(
     human_input_mode="NEVER",
     max_consecutive_auto_reply=10,
     is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-    code_execution_config={"work_dir": "/Users/chenxianglin/projects/keepsafe"},
+    code_execution_config={"use_docker": False},
 )
 
 # ── 团队群聊 ──────────────────────────────

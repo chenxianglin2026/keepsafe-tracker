@@ -1,0 +1,25 @@
+Reference,Value,Footprint,LCSC Part#,Qty,Unit Price,Subtotal,Description,Placement
+U1,Air780EG,LGA-109,C963216,1,22,22,4G Cat.1 Module EC618 SoC 17.7x15.8mm,Top
+J1,SIM_Nano_PushPull,SMD_6pin,C965875,1,1.5,1.5,Nano SIM Push-Pull Connector 15.3x14.7mm,Bottom
+ANT1,GPS_ANT_12x12,12x12mm_SMD,C249158,1,1.8,1.8,GPS Ceramic Active Antenna 1575.42MHz,Top
+J2,IPEX1_U.FL,SMD_3x3mm,C128753,1,0.3,0.3,IPEX-1 U.FL Female Connector,Top
+D1,LED_RED_0603,0603,C2290,1,0.05,0.05,Red LED 0603 SMD,Top
+D2,LED_GRN_0603,0603,C2293,1,0.05,0.05,Green LED 0603 SMD,Top
+SW1,SW_3x4x2.5,SMD_side,C318938,1,0.3,0.3,Tactile Switch 3x4x2.5mm Side-Actuated,Top
+BZ1,Buzzer_8.5mm,SMD_8.5mm,C12365,1,0.8,0.8,Passive Buzzer 8.5mm SMD,Bottom
+J3,Battery_1.25mm_2P,TH_2P_1.25mm,C613402,1,0.5,0.5,Battery Connector 1.25mm 2Pin,Bottom
+R1,10K,0402,,1,0.02,0.02,Resistor 10K 0402 (Red LED limit),Top
+R2,10K,0402,,1,0.02,0.02,Resistor 10K 0402 (Green LED limit),Top
+R3,10K,0402,,1,0.02,0.02,Resistor 10K 0402 (Button pull-up),Top
+C1,100nF,0402,,1,0.02,0.02,Capacitor 100nF 0402 (Decoupling),Top
+C2,100nF,0402,,1,0.02,0.02,Capacitor 100nF 0402 (Decoupling),Top
+C3,100nF,0402,,1,0.02,0.02,Capacitor 100nF 0402 (Decoupling),Top
+C4,10uF,0603,,1,0.05,0.05,Capacitor 10uF 0603 (Power filter),Top
+C5,22pF,0402,,1,0.02,0.02,Capacitor 22pF 0402 (GPS antenna match),Top
+C6,22pF,0402,,1,0.02,0.02,Capacitor 22pF 0402 (GPS antenna match),Top
+Q1,NPN_SOT23,SOT-23,,1,0.1,0.1,NPN Transistor SOT-23 (Buzzer driver),Top
+TP1,TestPoint,Pad_1mm,,0,0,0,UART1_TX Test Point,Bottom
+TP2,TestPoint,Pad_1mm,,0,0,0,UART1_RX Test Point,Bottom
+TP3,TestPoint,Pad_1mm,,0,0,0,USB_DP Test Point,Bottom
+TP4,TestPoint,Pad_1mm,,0,0,0,USB_DM Test Point,Bottom
+,,,TOTAL,19,,28.32,,

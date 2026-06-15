@@ -1,0 +1,419 @@
+{
+  "project": "KeepSafe V3 PCB Design",
+  "version": "3.0",
+  "date": "2026-06-13",
+  "description": "KeepSafe 防丢器 PCB - Air780EG (EC618 SoC) 单芯片方案",
+  "kiCad_project_path": "code/hardware/pcb/",
+
+  "board_specs": {
+    "dimensions": { "width": 32, "height": 22, "unit": "mm" },
+    "layers": 2,
+    "thickness": 1.0,
+    "copper_weight": "1oz",
+    "surface_finish": "HASL (leaded)",
+    "solder_mask": "Black",
+    "silkscreen": "White",
+    "min_trace_width": "0.1524mm (6mil)",
+    "min_clearance": "0.1524mm (6mil)"
+  },
+
+  "stackup": {
+    "top": [
+      { "layer": "F.Silkscreen", "type": "Top Silk Screen" },
+      { "layer": "F.Paste", "type": "Top Solder Paste" },
+      { "layer": "F.Mask", "type": "Top Solder Mask", "thickness_mm": 0.01 },
+      { "layer": "F.Cu", "type": "Signal + Components", "thickness_mm": 0.035 }
+    ],
+    "core": { "material": "FR-4", "thickness_mm": 1.0 },
+    "bottom": [
+      { "layer": "B.Cu", "type": "Signal + Ground Plane", "thickness_mm": 0.035 },
+      { "layer": "B.Mask", "type": "Bottom Solder Mask", "thickness_mm": 0.01 },
+      { "layer": "B.Paste", "type": "Bottom Solder Paste" },
+      { "layer": "B.Silkscreen", "type": "Bottom Silk Screen" }
+    ]
+  },
+
+  "components": [
+    {
+      "id": "U1",
+      "type": "4G Cat.1 Module",
+      "model": "Air780EG",
+      "package": "LGA-109",
+      "dimensions": { "width": 17.7, "height": 15.8, "thickness": 2.3, "unit": "mm" },
+      "placement": "Top",
+      "position": { "x": 5.5, "y": 0, "rotation": 0 },
+      "lcsc": "C963216",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "VBAT1", "type": "power_in", "net": "VBAT" },
+        { "pin": 2, "name": "VBAT2", "type": "power_in", "net": "VBAT" },
+        { "pin": 3, "name": "VBAT3", "type": "power_in", "net": "VBAT" },
+        { "pin": 4, "name": "GND", "type": "power_in", "net": "GND" },
+        { "pin": 5, "name": "GND", "type": "power_in", "net": "GND" },
+        { "pin": 8, "name": "GPIO1", "type": "bidirectional", "net": "GPIO1_GREEN_LED" },
+        { "pin": 9, "name": "GPIO2", "type": "bidirectional", "net": "GPIO2_RED_LED" },
+        { "pin": 10, "name": "GPIO3", "type": "bidirectional", "net": "GPIO3_BUTTON" },
+        { "pin": 11, "name": "GPIO4", "type": "bidirectional", "net": "GPIO4_BUZZER" },
+        { "pin": 20, "name": "PWRKEY", "type": "input", "net": "PWRKEY" },
+        { "pin": 21, "name": "RESET", "type": "input", "net": "RESET" },
+        { "pin": 45, "name": "ANT_MAIN", "type": "bidirectional", "net": "ANT_4G" },
+        { "pin": 49, "name": "USB_DP", "type": "bidirectional", "net": "USB_DP" },
+        { "pin": 50, "name": "USB_DM", "type": "bidirectional", "net": "USB_DM" },
+        { "pin": 54, "name": "GND", "type": "power_in", "net": "GND" },
+        { "pin": 55, "name": "UART1_TX", "type": "output", "net": "UART1_TX" },
+        { "pin": 56, "name": "UART1_RX", "type": "input", "net": "UART1_RX" },
+        { "pin": 67, "name": "ANT_GNSS", "type": "input", "net": "ANT_GPS" },
+        { "pin": 74, "name": "SIM_VDD", "type": "output", "net": "SIM_VDD" },
+        { "pin": 75, "name": "SIM_RST", "type": "output", "net": "SIM_RST" },
+        { "pin": 76, "name": "SIM_CLK", "type": "output", "net": "SIM_CLK" },
+        { "pin": 77, "name": "SIM_DATA", "type": "bidirectional", "net": "SIM_DATA" }
+      ]
+    },
+    {
+      "id": "J1",
+      "type": "SIM Card Socket",
+      "model": "Nano SIM Push-Pull",
+      "package": "SMD 6pin",
+      "dimensions": { "width": 15.3, "height": 14.7, "thickness": 1.5, "unit": "mm" },
+      "placement": "Bottom",
+      "position": { "x": -8, "y": -3, "rotation": 180 },
+      "lcsc": "C965875",
+      "quantity": 1,
+      "pins": [
+        { "pin": "C1", "name": "VDD", "net": "SIM_VDD" },
+        { "pin": "C2", "name": "RST", "net": "SIM_RST" },
+        { "pin": "C3", "name": "CLK", "net": "SIM_CLK" },
+        { "pin": "C5", "name": "GND", "net": "GND" },
+        { "pin": "C6", "name": "IO", "net": "SIM_DATA" }
+      ]
+    },
+    {
+      "id": "ANT1",
+      "type": "GPS Antenna",
+      "model": "Ceramic Active 12x12mm",
+      "package": "SMD",
+      "dimensions": { "width": 12, "height": 12, "thickness": 3, "unit": "mm" },
+      "frequency": "1575.42MHz (GPS L1)",
+      "placement": "Top",
+      "position": { "x": 14, "y": 6, "rotation": 0 },
+      "lcsc": "C249158",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "RF_IN", "net": "ANT_GPS" },
+        { "pin": 2, "name": "GND", "net": "GND" },
+        { "pin": 3, "name": "GND", "net": "GND" }
+      ],
+      "keepout_zone": "10mm radius no copper around antenna"
+    },
+    {
+      "id": "J2",
+      "type": "4G Antenna Connector",
+      "model": "IPEX-1 U.FL",
+      "package": "SMD",
+      "dimensions": { "width": 3, "height": 3, "unit": "mm" },
+      "placement": "Top",
+      "position": { "x": 14, "y": -4, "rotation": 0 },
+      "lcsc": "C128753",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "RF", "net": "ANT_4G" },
+        { "pin": 2, "name": "GND", "net": "GND" }
+      ]
+    },
+    {
+      "id": "D1",
+      "type": "LED Red",
+      "model": "0603 SMD LED",
+      "package": "0603",
+      "placement": "Top",
+      "position": { "x": -8, "y": 6, "rotation": 0 },
+      "lcsc": "C2290",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "A", "net": "GPIO2_RED_LED" },
+        { "pin": 2, "name": "K", "net": "GND" }
+      ],
+      "current_limiting": { "resistor": "R1", "value": "10K", "package": "0402" }
+    },
+    {
+      "id": "D2",
+      "type": "LED Green",
+      "model": "0603 SMD LED",
+      "package": "0603",
+      "placement": "Top",
+      "position": { "x": -8, "y": 4, "rotation": 0 },
+      "lcsc": "C2293",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "A", "net": "GPIO1_GREEN_LED" },
+        { "pin": 2, "name": "K", "net": "GND" }
+      ],
+      "current_limiting": { "resistor": "R2", "value": "10K", "package": "0402" }
+    },
+    {
+      "id": "SW1",
+      "type": "Tactile Switch",
+      "model": "3x4x2.5mm Side-Actuated",
+      "package": "SMD",
+      "placement": "Top",
+      "position": { "x": -8, "y": 1, "rotation": 0 },
+      "lcsc": "C318938",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "SW", "net": "GPIO3_BUTTON" },
+        { "pin": 2, "name": "SW", "net": "GND" }
+      ],
+      "pullup": { "resistor": "R3", "value": "10K", "voltage": "3.3V", "package": "0402" }
+    },
+    {
+      "id": "BZ1",
+      "type": "Buzzer",
+      "model": "8.5mm Passive SMD",
+      "package": "SMD 8.5mm",
+      "placement": "Bottom",
+      "position": { "x": -8, "y": -4, "rotation": 180 },
+      "lcsc": "C12365",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "+", "net": "GPIO4_BUZZER" },
+        { "pin": 2, "name": "-", "net": "GND" }
+      ],
+      "driver": { "type": "NPN transistor", "transistor": "Q1", "package": "SOT-23" }
+    },
+    {
+      "id": "J3",
+      "type": "Battery Connector",
+      "model": "1.25mm 2Pin Horizontal",
+      "package": "SMD",
+      "placement": "Bottom",
+      "position": { "x": -8, "y": -8, "rotation": 180 },
+      "lcsc": "C613402",
+      "quantity": 1,
+      "pins": [
+        { "pin": 1, "name": "VBAT", "net": "VBAT" },
+        { "pin": 2, "name": "GND", "net": "GND" }
+      ],
+      "battery": { "type": "Li-Po", "voltage": "3.7V", "capacity": "200mAh" }
+    },
+    {
+      "id": "R1",
+      "type": "Resistor",
+      "value": "10K",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": -5, "y": 6, "rotation": 270 },
+      "quantity": 1,
+      "net": ["GPIO2_RED_LED", "D1_A"]
+    },
+    {
+      "id": "R2",
+      "type": "Resistor",
+      "value": "10K",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": -5, "y": 4, "rotation": 270 },
+      "quantity": 1,
+      "net": ["GPIO1_GREEN_LED", "D2_A"]
+    },
+    {
+      "id": "R3",
+      "type": "Resistor",
+      "value": "10K",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": -5, "y": 1, "rotation": 270 },
+      "quantity": 1,
+      "net": ["GPIO3_BUTTON", "+3V3"]
+    },
+    {
+      "id": "C1",
+      "type": "Capacitor",
+      "value": "100nF",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": 2, "y": 7, "rotation": 0 },
+      "quantity": 1,
+      "net": ["VBAT", "GND"],
+      "purpose": "Decoupling"
+    },
+    {
+      "id": "C2",
+      "type": "Capacitor",
+      "value": "100nF",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": 4, "y": 7, "rotation": 0 },
+      "quantity": 1,
+      "net": ["VBAT", "GND"],
+      "purpose": "Decoupling"
+    },
+    {
+      "id": "C3",
+      "type": "Capacitor",
+      "value": "100nF",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": 6, "y": 7, "rotation": 0 },
+      "quantity": 1,
+      "net": ["VBAT", "GND"],
+      "purpose": "Decoupling"
+    },
+    {
+      "id": "C4",
+      "type": "Capacitor",
+      "value": "10uF",
+      "package": "0603",
+      "placement": "Top",
+      "position": { "x": 8, "y": 7, "rotation": 0 },
+      "quantity": 1,
+      "net": ["VBAT", "GND"],
+      "purpose": "Power filtering"
+    },
+    {
+      "id": "C5",
+      "type": "Capacitor",
+      "value": "22pF",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": 12, "y": 4, "rotation": 270 },
+      "quantity": 1,
+      "net": ["ANT_GPS", "GND"],
+      "purpose": "GPS antenna matching"
+    },
+    {
+      "id": "C6",
+      "type": "Capacitor",
+      "value": "22pF",
+      "package": "0402",
+      "placement": "Top",
+      "position": { "x": 12, "y": 2, "rotation": 270 },
+      "quantity": 1,
+      "net": ["ANT_GPS", "GND"],
+      "purpose": "GPS antenna matching"
+    },
+    {
+      "id": "Q1",
+      "type": "NPN Transistor",
+      "model": "S8050",
+      "package": "SOT-23",
+      "placement": "Top",
+      "position": { "x": -5, "y": -3, "rotation": 0 },
+      "quantity": 1,
+      "net": ["GPIO4_BUZZER", "VBAT"],
+      "purpose": "Buzzer driver"
+    },
+    {
+      "id": "TP1",
+      "type": "Test Point",
+      "net": "UART1_TX",
+      "placement": "Bottom",
+      "position": { "x": -12, "y": -9, "rotation": 180 },
+      "quantity": 0
+    },
+    {
+      "id": "TP2",
+      "type": "Test Point",
+      "net": "UART1_RX",
+      "placement": "Bottom",
+      "position": { "x": -10, "y": -9, "rotation": 180 },
+      "quantity": 0
+    },
+    {
+      "id": "TP3",
+      "type": "Test Point",
+      "net": "USB_DP",
+      "placement": "Bottom",
+      "position": { "x": -8, "y": -9, "rotation": 180 },
+      "quantity": 0
+    },
+    {
+      "id": "TP4",
+      "type": "Test Point",
+      "net": "USB_DM",
+      "placement": "Bottom",
+      "position": { "x": -6, "y": -9, "rotation": 180 },
+      "quantity": 0
+    }
+  ],
+
+  "nets": [
+    { "name": "VBAT", "nodes": ["U1.1", "U1.2", "U1.3", "J3.1", "C1.1", "C2.1", "C3.1", "C4.1", "Q1.C"], "voltage": "3.7V" },
+    { "name": "GND", "nodes": ["U1.4", "U1.5", "U1.54", "J3.2", "D1.2", "D2.2", "SW1.2", "BZ1.2", "J1.C5", "ANT1.2", "ANT1.3", "J2.2", "C1.2", "C2.2", "C3.2", "C4.2", "C5.2", "C6.2", "Q1.E"] },
+    { "name": "GPIO1_GREEN_LED", "nodes": ["U1.8", "R2.1"], "via": "R2.2→D2.1" },
+    { "name": "GPIO2_RED_LED", "nodes": ["U1.9", "R1.1"], "via": "R1.2→D1.1" },
+    { "name": "GPIO3_BUTTON", "nodes": ["U1.10", "SW1.1", "R3.1"] },
+    { "name": "GPIO4_BUZZER", "nodes": ["U1.11", "Q1.B"] },
+    { "name": "ANT_4G", "nodes": ["U1.45", "J2.1"] },
+    { "name": "ANT_GPS", "nodes": ["U1.67", "ANT1.1", "C5.1", "C6.1"] },
+    { "name": "SIM_VDD", "nodes": ["U1.74", "J1.C1"] },
+    { "name": "SIM_RST", "nodes": ["U1.75", "J1.C2"] },
+    { "name": "SIM_CLK", "nodes": ["U1.76", "J1.C3"] },
+    { "name": "SIM_DATA", "nodes": ["U1.77", "J1.C6"] },
+    { "name": "UART1_TX", "nodes": ["U1.55", "TP1.1"] },
+    { "name": "UART1_RX", "nodes": ["U1.56", "TP2.1"] },
+    { "name": "USB_DP", "nodes": ["U1.49", "TP3.1"] },
+    { "name": "USB_DM", "nodes": ["U1.50", "TP4.1"] },
+    { "name": "+3V3", "nodes": ["R3.2"], "voltage": "3.3V", "source": "Air780EG internal LDO" }
+  ],
+
+  "layout_requirements": {
+    "placement": [
+      { "component": "U1 (Air780EG)", "location": "Center of board, Top layer" },
+      { "component": "ANT1 (GPS Antenna)", "location": "Board corner, Top layer, 10mm keepout zone underneath" },
+      { "component": "J2 (IPEX-1)", "location": "Board edge, Top layer, for easy antenna cable routing" },
+      { "component": "J1 (SIM Socket)", "location": "Bottom layer center" },
+      { "component": "D1, D2 (LEDs)", "location": "Top layer, near edge for visibility" },
+      { "component": "SW1 (Button)", "location": "Top layer, near edge for access" },
+      { "component": "BZ1 (Buzzer)", "location": "Bottom layer" },
+      { "component": "J3 (Battery)", "location": "Bottom layer, near edge for cable access" }
+    ],
+    "routing": [
+      { "signal": "RF ANT (4G/GPS)", "impedance": "50 Ohm", "trace_width": "~0.45mm", "note": "Keep short, no vias if possible" },
+      { "signal": "SIM", "max_length": "50mm", "note": "Guard traces / ground shielding recommended" },
+      { "signal": "Power (VBAT)", "min_width": "0.5mm" },
+      { "signal": "GPIO", "width": "0.2mm" },
+      { "signal": "UART/USB", "width": "0.2mm" }
+    ],
+    "keepout_zones": [
+      { "area": "10mm radius around ANT1 (GPS)", "layer": "All", "note": "No copper, no components" }
+    ]
+  },
+
+  "bom_summary": {
+    "total_unique_parts": 19,
+    "total_quantity": 23,
+    "pcb_cost": { "jlcpcb_5pcs": 20, "unit": "CNY" },
+    "smt_cost": { "jlcpcb": 50, "unit": "CNY" },
+    "component_cost": 28.32,
+    "total_prototype_cost": 108.32,
+    "currency": "CNY"
+  },
+
+  "outputs": {
+    "gerber": { "layers": ["F.Cu", "B.Cu", "F.Mask", "B.Mask", "F.Silkscreen", "B.Silkscreen", "Edge.Cuts", "F.Paste", "B.Paste"], "format": "RS-274X" },
+    "drill": { "format": "Excellon", "plated": true, "non_plated": false },
+    "bom": "BOM-V3.csv",
+    "centroid": "Pick-and-place (CPL) file",
+    "netlist": "IPC-D-356 or KiCad netlist"
+  },
+
+  "files_created": {
+    "project": "keepsafe.kicad_pro",
+    "schematic": "keepsafe.kicad_sch",
+    "pcb": "keepsafe.kicad_pcb",
+    "symbol_library": "libs/keepsafe.kicad_sym",
+    "footprint_library": "libs/keepsafe.pretty/",
+    "sym_lib_table": "sym-lib-table",
+    "fp_lib_table": "fp-lib-table",
+    "bom": "BOM-V3.csv",
+    "design_json": "PCB-DESIGN-V3.json"
+  },
+
+  "manufacturing_notes": [
+    "Use JLCPCB for prototype fabrication and SMT assembly",
+    "Order Air780EG from LCSC (C963216) or Taobao OpenLuat official store",
+    "Battery and 4G FPC antenna are off-board components",
+    "Hand-solder battery connector after SMT",
+    "Program with LuatOS firmware after assembly"
+  ]
+}

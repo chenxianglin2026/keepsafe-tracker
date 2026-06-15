@@ -1,8 +1,24 @@
 (kicad_project
   (version 8)
-  (title "KeepSafe")
-  (date "2026-05-28")
+  (title "KeepSafe V3")
+  (date "2026-06-13")
   (paper "A4")
-  (generator "kicad_cli")
+  (generator "hermes-agent")
   (uuid "285a12a6-361d-453a-a9c3-f480f59c05d2")
+  (pcb_file "keepsafe.kicad_pcb")
+  (schematic_files
+    (schematic_file "keepsafe.kicad_sch")
+  )
+  (board
+    (design_settings
+      (board_thickness 1.0)
+      (copper_finish "HASL")
+      (solder_mask_color "Black")
+      (silkscreen_color "White")
+    )
+    (stackup
+      (layer "F.Cu" (type "signal") (thickness 0.035))
+      (layer "B.Cu" (type "signal") (thickness 0.035))
+    )
+  )
 )
