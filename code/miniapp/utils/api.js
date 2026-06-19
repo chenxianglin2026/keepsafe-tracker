@@ -4,7 +4,7 @@
  * baseUrl: http://43.163.5.90:8000/api/v1
  */
 
-const BASE_URL = 'http://43.163.5.90:8000/api/v1'
+const BASE_URL = 'https://a.7yijia888.com/api/v1'
 
 /** 最大重试次数 */
 const MAX_RETRIES = 2
